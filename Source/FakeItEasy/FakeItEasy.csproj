@@ -251,6 +251,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="DefaultOutputWriter.cs" />
+    <Compile Include="ExtensionSyntax\NSubstitute\SubstituteExtensions.cs" />
     <Compile Include="IArgumentConstraintManager.cs" />
     <Compile Include="IArgumentConstraintManagerFactory.cs" />
     <Compile Include="Core\IArgumentConstraintTrapper.cs" />

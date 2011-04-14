@@ -122,6 +122,8 @@ namespace FakeItEasy.Core
             this.AllUserRules.Remove(ruleToRemove);
         }
 
+        public event EventHandler<CallInterceptedEventArgs> CallWasIntercepted;
+
         internal virtual void AttachProxy(Type typeOfFake, object proxy, ICallInterceptedEventRaiser eventRaiser)
         {
             this.Object = proxy;
@@ -189,6 +191,12 @@ namespace FakeItEasy.Core
         private void Proxy_CallWasIntercepted(object sender, CallInterceptedEventArgs e)
         {
             this.Intercept(e.Call);
+
+            var handler = this.CallWasIntercepted;
+            if (handler != null)
+            {
+                handler.Invoke(this, e);
+            }
         }
         
         private class InterceptedCallAdapter

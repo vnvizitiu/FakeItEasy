@@ -5,7 +5,7 @@ namespace FakeItEasy.Creation
     /// <summary>
     /// Handles the creation of fake and dummy objects.
     /// </summary>
-    internal interface IFakeAndDummyManager
+    public interface IFakeAndDummyManager
     {
         /// <summary>
         /// Creates a dummy of the specified type.

@@ -60,5 +60,11 @@ namespace FakeItEasy.Configuration
 
             return this;
         }
+
+        public IRecordingConfigurationWithArgumentValidation Where(Func<IFakeObjectCall, bool> predicate, Action<IOutputWriter> descriptionWriter)
+        {
+            this.rule.ApplyWherePredicate(predicate, x => x.Write("Predicate"));
+            return this;
+        }
     }
 }

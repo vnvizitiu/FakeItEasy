@@ -6,7 +6,7 @@ namespace FakeItEasy.Creation
     using Core;
     using FakeItEasy.SelfInitializedFakes;
 
-    internal class FakeOptions
+    public class FakeOptions
     {
         public FakeOptions()
         {

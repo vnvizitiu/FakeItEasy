@@ -46,6 +46,31 @@ namespace FakeItEasy.Creation
             return null;
         }
 
+        public virtual object CreateFake(Type typeOfFake, FakeOptions fakeOptions, IDummyValueCreationSession session, bool throwOnFailure, EventHandler<CallInterceptedEventArgs> handler)
+        {
+            var result = this.proxyGenerator.GenerateProxy(typeOfFake, fakeOptions.AdditionalInterfacesToImplement, fakeOptions.ArgumentsForConstructor);
+
+            if (throwOnFailure)
+            {
+                this.AssertThatProxyWasGeneratedWhenArgumentsForConstructorAreSpecified(typeOfFake, result, fakeOptions);
+            }
+
+            if (!result.ProxyWasSuccessfullyGenerated && fakeOptions.ArgumentsForConstructor == null)
+            {
+                result = this.TryCreateFakeWithDummyArgumentsForConstructor(typeOfFake, fakeOptions, session, result.ReasonForFailure, throwOnFailure);
+            }
+
+            if (result != null)
+            {
+                this.fakeManagerAttacher.AttachFakeManagerToProxy(typeOfFake, result.GeneratedProxy, result.CallInterceptedEventRaiser);
+                result.CallInterceptedEventRaiser.CallWasIntercepted += handler;
+                this.configurer.ConfigureFake(typeOfFake, result.GeneratedProxy);
+                return result.GeneratedProxy;
+            }
+
+            return null;
+        }
+
         private static ResolvedConstructor[] ResolveConstructors(Type typeOfFake, IDummyValueCreationSession session)
         {
             logger.Debug("Resolving constructors for type {0}.", typeOfFake);
