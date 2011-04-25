@@ -11,7 +11,7 @@ namespace FakeItEasy
     /// </summary>
     public static class OrderedAssertion
     {
-        private static FakeAsserter.Factory currentAsserterFactoryField = x => new FakeAsserter(x, ServiceLocator.Current.Resolve<CallWriter>());
+        private static FakeAsserter.Factory currentAsserterFactoryField = x => new FakeAsserter(x, ServiceLocator.Current.Resolve<CallWriter>(), ServiceLocator.Current.Resolve<IAssertionExceptionThrower>());
         private static bool orderedAssertionsScopeIsOpened;
 
         internal static FakeAsserter.Factory CurrentAsserterFactory
@@ -49,8 +49,8 @@ namespace FakeItEasy
         private static OrderedFakeAsserterFactory CreateOrderedAsserterFactory(IEnumerable<ICompletedFakeObjectCall> calls)
         {
             return new OrderedFakeAsserterFactory(
-                x => new FakeAsserter(x, ServiceLocator.Current.Resolve<CallWriter>()), 
-                new OrderedFakeAsserter(calls.Cast<IFakeObjectCall>(), ServiceLocator.Current.Resolve<CallWriter>()));
+                x => new FakeAsserter(x, ServiceLocator.Current.Resolve<CallWriter>(), ServiceLocator.Current.Resolve<IAssertionExceptionThrower>()), 
+                new OrderedFakeAsserter(calls.Cast<IFakeObjectCall>(), ServiceLocator.Current.Resolve<CallWriter>(), ServiceLocator.Current.Resolve<IAssertionExceptionThrower>()));
         }
 
         private static void AssertThatScopeIsNotOpen()

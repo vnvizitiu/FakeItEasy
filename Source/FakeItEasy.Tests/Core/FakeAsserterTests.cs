@@ -12,17 +12,19 @@
     {
         private List<IFakeObjectCall> calls;
         private CallWriter callWriter;
+        private IAssertionExceptionThrower exceptionThrower;
 
         [SetUp]
         public void SetUp()
         {
             this.calls = new List<IFakeObjectCall>();
             this.callWriter = A.Fake<CallWriter>();
+            this.exceptionThrower = A.Fake<IAssertionExceptionThrower>();
         }
 
         private FakeAsserter CreateAsserter()
         {
-            return new FakeAsserter(this.calls, this.callWriter);
+            return new FakeAsserter(this.calls, this.callWriter, this.exceptionThrower);
         }
 
         private void StubCalls(int numberOfCalls)
@@ -31,20 +33,6 @@
             {
                 this.calls.Add(A.Fake<IFakeObjectCall>());
             }
-        }
-
-        private string GetExceptionMessage(Action failingAssertion)
-        {
-            try
-            {
-                failingAssertion();
-            }
-            catch (ExpectationException ex)
-            {
-                return ex.Message;
-            }
-
-            throw new AssertionException("No ExpectationException was thrown.");
         }
 
         [Test]
@@ -63,8 +51,9 @@
             this.StubCalls(2);
 
             var asserter = this.CreateAsserter();
-
-            Assert.Throws<ExpectationException>(() => asserter.AssertWasCalled(x => true, "", x => false, ""));
+            asserter.AssertWasCalled(x => true, "", x => false, "");
+            
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>._)).MustHaveHappened();
         }
 
         [Test]
@@ -86,13 +75,12 @@
         {
             var asserter = this.CreateAsserter();
 
-            var message = this.GetExceptionMessage(() =>
-                asserter.AssertWasCalled(x => true, @"IFoo.Bar(1)", x => false, ""));
+            asserter.AssertWasCalled(x => true, @"IFoo.Bar(1)", x => false, "");
 
-            Assert.That(message, Is.StringStarting(@"
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>.That.StartsWith(@"
 
   Assertion failed for the following call:
-    IFoo.Bar(1)"));
+    IFoo.Bar(1)"))).MustHaveHappened();
         }
 
         [Test]
@@ -102,11 +90,10 @@
 
             var asserter = this.CreateAsserter();
 
-            var message = this.GetExceptionMessage(() =>
-                asserter.AssertWasCalled(x => false, "", x => x == 2, "#2 times"));
+            asserter.AssertWasCalled(x => false, "", x => x == 2, "#2 times");
 
-            Assert.That(message, Is.StringContaining(@"
-  Expected to find it #2 times but found it #0 times among the calls:"));
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>.That.Contains(@"
+  Expected to find it #2 times but found it #0 times among the calls:"))).MustHaveHappened();
         }
 
         [Test]
@@ -116,8 +103,7 @@
 
             var asserter = this.CreateAsserter();
 
-            var message = this.GetExceptionMessage(() =>
-                asserter.AssertWasCalled(x => false, "", x => false, ""));
+            asserter.AssertWasCalled(x => false, "", x => false, "");
 
             A.CallTo(() => this.callWriter.WriteCalls(A<IEnumerable<IFakeObjectCall>>.That.IsThisSequence(this.calls), A<IOutputWriter>._)).MustHaveHappened();
         }
@@ -129,11 +115,10 @@
 
             var asserter = this.CreateAsserter();
 
-            var message = this.GetExceptionMessage(() =>
-                asserter.AssertWasCalled(x => false, "", x => x == 2, "#2 times"));
+            asserter.AssertWasCalled(x => false, "", x => x == 2, "#2 times");
 
-            Assert.That(message, Is.StringContaining(@"
-  Expected to find it #2 times but no calls were made to the fake object."));
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>.That.Contains(@"
+  Expected to find it #2 times but no calls were made to the fake object."))).MustHaveHappened();
         }
 
         [Test]
@@ -141,10 +126,9 @@
         {
             var asserter = this.CreateAsserter();
 
-            var message = this.GetExceptionMessage(() =>
-                asserter.AssertWasCalled(x => false, "", x => false, ""));
+            asserter.AssertWasCalled(x => false, "", x => false, "");
 
-            Assert.That(message, Is.StringEnding(string.Concat(Environment.NewLine, Environment.NewLine)));
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>.That.Matches(x => x.EndsWith(string.Concat(Environment.NewLine, Environment.NewLine)), "ends with double blank line"))).MustHaveHappened();
         }
 
         [Test]
@@ -152,10 +136,9 @@
         {
             var asserter = this.CreateAsserter();
 
-            var message = this.GetExceptionMessage(() =>
-                asserter.AssertWasCalled(x => false, "", x => false, ""));
+            asserter.AssertWasCalled(x => false, "", x => false, "");
 
-            Assert.That(message, Is.StringStarting(Environment.NewLine));
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>.That.StartsWith(Environment.NewLine))).MustHaveHappened();
         }
     }
 }

@@ -9,11 +9,13 @@ namespace FakeItEasy.Core
     internal class FakeAsserter : IFakeAsserter
     {
         private readonly CallWriter callWriter;
-        
-        public FakeAsserter(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter)
+        private readonly IAssertionExceptionThrower exceptionThrower;
+
+        public FakeAsserter(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter, IAssertionExceptionThrower exceptionThrower)
         {
             this.Calls = calls;
             this.callWriter = callWriter;
+            this.exceptionThrower = exceptionThrower;
         }
 
         public delegate IFakeAsserter Factory(IEnumerable<IFakeObjectCall> calls);
@@ -28,7 +30,7 @@ namespace FakeItEasy.Core
             {
                 var message = this.CreateExceptionMessage(callDescription, repeatDescription, repeat);
 
-                throw new ExpectationException(message);
+                this.exceptionThrower.ThrowAssertionException(message);
             }
         }
 

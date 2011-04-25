@@ -10,16 +10,18 @@ namespace FakeItEasy.Tests.Core
     public class OrderedFakeAsserterTests
     {
         private CallWriter callWriter;
+        private IAssertionExceptionThrower exceptionThrower;
         
         [SetUp]
         public void SetUp()
         {
             this.callWriter = A.Fake<CallWriter>();
+            this.exceptionThrower = A.Fake<IAssertionExceptionThrower>();
         }
 
         private OrderedFakeAsserter CreateAsserter(IEnumerable<IFakeObjectCall> calls)
         {
-            return new OrderedFakeAsserter(calls, this.callWriter);
+            return new OrderedFakeAsserter(calls, this.callWriter, this.exceptionThrower);
         }
 
         [Test]
@@ -37,8 +39,11 @@ namespace FakeItEasy.Tests.Core
             orderedAsserter.AssertWasCalled(secondCallPredicate, "foo", x => x == 1, "foo");
             
             // Assert
-            Assert.Throws<ExpectationException>(() =>
-                orderedAsserter.AssertWasCalled(firstCallPredicate, "foo", x => x == 1, "foo"));
+            using (Fake.CreateScope())
+            {
+                orderedAsserter.AssertWasCalled(firstCallPredicate, "foo", x => x == 1, "foo");
+                A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>._)).MustHaveHappened();
+            }
         }
 
         [Test]
@@ -54,10 +59,10 @@ namespace FakeItEasy.Tests.Core
 
             // Act
             orderedAsserter.AssertWasCalled(firstCallPredicate, "foo", x => x == 1, "foo");
-
+            orderedAsserter.AssertWasCalled(secondCallPredicate, "foo", x => x == 1, "foo");
+            
             // Assert
-            Assert.DoesNotThrow(() =>
-                orderedAsserter.AssertWasCalled(secondCallPredicate, "foo", x => x == 1, "foo"));
+            A.CallTo(this.exceptionThrower).MustNotHaveHappened();
         }
 
         [Test]
@@ -76,8 +81,8 @@ namespace FakeItEasy.Tests.Core
             orderedAsserter.AssertWasCalled(firstCallPredicate, "foo", x => x == 2, "foo");
 
             // Assert
-            Assert.Throws<ExpectationException>(() =>
-                orderedAsserter.AssertWasCalled(secondCallPredicate, "foo", x => x == 1, "foo"));
+            orderedAsserter.AssertWasCalled(secondCallPredicate, "foo", x => x == 1, "foo");
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(A<string>._)).MustHaveHappened();
         }
 
 
@@ -99,7 +104,8 @@ namespace FakeItEasy.Tests.Core
 
             // Act
             orderedAsserter.AssertWasCalled(firstCallPredicate, "first call description", x => x == 2, "first repeat description");
-
+            orderedAsserter.AssertWasCalled(secondCallPredicate, "second call description", x => x == 1, "second repeat description");
+            
             // Assert
             var expectedMessage = @"
 
@@ -109,8 +115,7 @@ namespace FakeItEasy.Tests.Core
   The calls where found but not in the correct order among the calls:
     list of calls";
 
-            Assert.That(() => orderedAsserter.AssertWasCalled(secondCallPredicate, "second call description", x => x == 1, "second repeat description"),
-                Throws.Exception.With.Message.EqualTo(expectedMessage));
+            A.CallTo(() => this.exceptionThrower.ThrowAssertionException(expectedMessage)).MustHaveHappened();
         }
     }
 }

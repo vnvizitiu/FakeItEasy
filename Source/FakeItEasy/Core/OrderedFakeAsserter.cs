@@ -10,6 +10,7 @@ namespace FakeItEasy.Core
     {
         private readonly List<AssertedCall> assertedCalls;
         private readonly CallWriter callWriter;
+        private readonly IAssertionExceptionThrower exceptionThrower;
         private readonly Queue<IFakeObjectCall> calls;
         private readonly IEnumerable<IFakeObjectCall> originalCallList;
 
@@ -18,11 +19,13 @@ namespace FakeItEasy.Core
         /// </summary>
         /// <param name="calls">The calls.</param>
         /// <param name="callWriter">The call writer.</param>
-        public OrderedFakeAsserter(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter)
+        /// <param name="exceptionThrower">Responsible for throwing assertion exceptions.</param>
+        public OrderedFakeAsserter(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter, IAssertionExceptionThrower exceptionThrower)
         {
             this.originalCallList = calls;
             this.calls = new Queue<IFakeObjectCall>(calls);
             this.callWriter = callWriter;
+            this.exceptionThrower = exceptionThrower;
 
             this.assertedCalls = new List<AssertedCall>();
         }
@@ -54,6 +57,7 @@ namespace FakeItEasy.Core
                 if (this.calls.Count == 0)
                 {
                     this.ThrowExceptionWhenAssertionFailed();
+                    return;
                 }
 
                 var currentCall = this.calls.Dequeue();
@@ -99,7 +103,7 @@ namespace FakeItEasy.Core
                 }
             }
 
-            throw new ExpectationException(message.Builder.ToString());
+            this.exceptionThrower.ThrowAssertionException(message.Builder.ToString());
         }
 
         private struct AssertedCall

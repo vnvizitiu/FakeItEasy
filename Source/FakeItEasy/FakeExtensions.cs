@@ -206,10 +206,7 @@ namespace FakeItEasy
         {
             Guard.AgainstNull(options, "options");
 
-            Action<IFakeObjectCall> thrower = c =>
-                {
-                    throw new ExpectationException("Call to non configured method \"{0}\" of strict fake.".FormatInvariant(c.Method.Name));
-                };
+            Action<IFakeObjectCall> thrower = c => ServiceLocator.Current.Resolve<IAssertionExceptionThrower>().ThrowAssertionException("Call to non configured method \"{0}\" of strict fake.".FormatInvariant(c.Method.Name));
 
             return options.OnFakeCreated(
                 x => A.CallTo(x).Invokes(thrower));
