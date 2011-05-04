@@ -86,6 +86,7 @@
     <Compile Include="Core\DefaultArgumentConstraintManagerTests.cs" />
     <Compile Include="Core\DefaultFixtureInitializerTests.cs" />
     <Compile Include="Core\FakeCallEqualityComparerTests.cs" />
+    <Compile Include="Core\PluggableAssertionExceptionThrowerTests.cs" />
     <Compile Include="Creation\CastleDynamicProxy\CastleDynamicProxyInterceptionValidatorTests.cs" />
     <Compile Include="Creation\DefaultFakeAndDummyManagerTests.cs">
       <SubType>Code</SubType>

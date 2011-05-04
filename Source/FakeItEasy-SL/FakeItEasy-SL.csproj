@@ -220,9 +220,6 @@
     <Compile Include="..\FakeItEasy\Core\DefaultArgumentConstraintManager.cs">
       <Link>Core\DefaultArgumentConstraintManager.cs</Link>
     </Compile>
-    <Compile Include="..\FakeItEasy\Core\DefaultAssertionExceptionThrower.cs">
-      <Link>Core\DefaultAssertionExceptionThrower.cs</Link>
-    </Compile>
     <Compile Include="..\FakeItEasy\Core\DefaultExceptionThrower.cs">
       <Link>Core\DefaultExceptionThrower.cs</Link>
     </Compile>
@@ -287,6 +284,9 @@
     </Compile>
     <Compile Include="..\FakeItEasy\Core\IArgumentConstraintTrapper.cs">
       <Link>Core\IArgumentConstraintTrapper.cs</Link>
+    </Compile>
+    <Compile Include="..\FakeItEasy\Core\IAssertionExceptionResolver.cs">
+      <Link>Core\IAssertionExceptionResolver.cs</Link>
     </Compile>
     <Compile Include="..\FakeItEasy\Core\IAssertionExceptionThrower.cs">
       <Link>Core\IAssertionExceptionThrower.cs</Link>
@@ -362,6 +362,9 @@
     </Compile>
     <Compile Include="..\FakeItEasy\Core\OrderedFakeAsserterFactory.cs">
       <Link>Core\OrderedFakeAsserterFactory.cs</Link>
+    </Compile>
+    <Compile Include="..\FakeItEasy\Core\PluggableAssertionExceptionThrower.cs">
+      <Link>Core\PluggableAssertionExceptionThrower.cs</Link>
     </Compile>
     <Compile Include="..\FakeItEasy\Core\WrappedObjectRule.cs">
       <Link>Core\WrappedObjectRule.cs</Link>
@@ -622,7 +625,7 @@
       <FlavorProperties GUID="{A1591282-1198-4647-A2B1-27E5FF5F6F3B}">
         <SilverlightProjectProperties />
       </FlavorProperties>
-      <UserProperties ProjectLinkerExcludeFilter="\\?desktop(\\.*)?$;\\?silverlight(\\.*)?$;\.desktop;\.silverlight;\.xaml;^service references(\\.*)?$;\.clientconfig;^web references(\\.*)?$" ProjectLinkReference="80721425-68e5-48dc-87ea-41d63d0b45fa" />
+      <UserProperties ProjectLinkReference="80721425-68e5-48dc-87ea-41d63d0b45fa" ProjectLinkerExcludeFilter="\\?desktop(\\.*)?$;\\?silverlight(\\.*)?$;\.desktop;\.silverlight;\.xaml;^service references(\\.*)?$;\.clientconfig;^web references(\\.*)?$" />
     </VisualStudio>
   </ProjectExtensions>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -188,7 +188,7 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Core\DefaultArgumentConstraintManager.cs" />
-    <Compile Include="Core\DefaultAssertionExceptionThrower.cs" />
+    <Compile Include="Core\PluggableAssertionExceptionThrower.cs" />
     <Compile Include="Core\DefaultExceptionThrower.cs">
       <SubType>Code</SubType>
     </Compile>
@@ -251,6 +251,7 @@
     <Compile Include="Core\IArgumentConstraint.cs">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Core\IAssertionExceptionResolver.cs" />
     <Compile Include="Core\IAssertionExceptionThrower.cs" />
     <Compile Include="DefaultOutputWriter.cs" />
     <Compile Include="IArgumentConstraintManager.cs" />

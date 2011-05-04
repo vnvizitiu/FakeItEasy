@@ -11,6 +11,7 @@
     using FakeItEasy.Expressions;
     using FakeItEasy.IoC;
     using FakeItEasy.SelfInitializedFakes;
+    using System.Linq;
 
     /// <summary>
     /// Handles the registration of root dependencies in an IoC-container.
@@ -120,7 +121,10 @@
 
             container.RegisterSingleton<IOutputWriter>(c => new DefaultOutputWriter(Console.Write));
 
-            container.RegisterSingleton<IAssertionExceptionThrower>(c => new DefaultAssertionExceptionThrower());
+            container.RegisterSingleton<IAssertionExceptionThrower>(c => new PluggableAssertionExceptionThrower(c.Resolve<IEnumerable<IAssertionExceptionResolver>>()));
+
+            container.RegisterSingleton<IEnumerable<IAssertionExceptionResolver>>(
+                c => Enumerable.Empty<IAssertionExceptionResolver>());
         }
 
         private class ExpressionCallMatcherFactory
