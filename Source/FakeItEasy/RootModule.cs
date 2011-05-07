@@ -124,7 +124,10 @@
             container.RegisterSingleton<IAssertionExceptionThrower>(c => new PluggableAssertionExceptionThrower(c.Resolve<IEnumerable<IAssertionExceptionResolver>>()));
 
             container.RegisterSingleton<IEnumerable<IAssertionExceptionResolver>>(
-                c => Enumerable.Empty<IAssertionExceptionResolver>());
+                c => new[] { c.Resolve<NUnitAssertionExceptionResolver>() });
+
+            container.RegisterSingleton<NUnitAssertionExceptionResolver>(
+                c => new NUnitAssertionExceptionResolver());
         }
 
         private class ExpressionCallMatcherFactory

@@ -43,6 +43,22 @@ namespace FakeItEasy.IntegrationTests.Assertions
         }
 
         [Test]
+        public void test_name()
+        {
+            var foo = A.Fake<IFoo>();
+
+            foo.Bar();
+            foo.Bar();
+
+            foo.Bar("test");
+            foo.Bar(new DateTime(1977, 4, 5), "birthday");
+            foo.ToString();
+            foo.Biz();
+
+            A.CallTo(() => foo.Bar("")).MustHaveHappened(Repeated.AtLeast.Twice);
+        }
+
+        [Test]
         [SetCulture("en-US")]
         public void Exception_message_should_be_correctly_formatted_when_containing_call_with_three_or_more_arguments()
         {

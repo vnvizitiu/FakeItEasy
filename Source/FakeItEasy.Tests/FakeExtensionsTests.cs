@@ -409,7 +409,7 @@ namespace FakeItEasy.Tests
                             {
                                 foo.Bar();
                             },
-                            Throws.Exception.InstanceOf<ExpectationException>()
+                            Throws.Exception
                             .With.Message.EqualTo("Call to non configured method \"Bar\" of strict fake."));
         }
 

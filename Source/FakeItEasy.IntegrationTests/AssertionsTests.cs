@@ -70,7 +70,7 @@ namespace FakeItEasy.IntegrationTests
                         A.CallTo(() => foo.Baz()).MustHaveHappened();
                     }
                 },
-                Throws.Exception.InstanceOf<ExpectationException>());
+                Throws.Exception);
             }
         }
 
@@ -107,7 +107,7 @@ namespace FakeItEasy.IntegrationTests
             {
                 A.CallTo(fake).PropertySetter(propertyName: "SetOnly", expectedValue: 100).MustHaveHappened();
             },
-            Throws.Exception.InstanceOf<ExpectationException>());
+            Throws.Exception.InstanceOf<AssertionException>());
 
             fake.SetOnly = 100;
             A.CallTo(fake).PropertySetter<object>("SetOnly", null).MustHaveHappened();
