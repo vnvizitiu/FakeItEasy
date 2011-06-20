@@ -1,6 +1,5 @@
 namespace FakeItEasy.IntegrationTests
 {
-    using System;
     using FakeItEasy.Core;
     using FakeItEasy.Tests;
     using NUnit.Framework;
@@ -25,7 +24,7 @@ namespace FakeItEasy.IntegrationTests
         {
             using (Fake.CreateScope(new NullFakeObjectContainer()))
             {
-                Assert.That(A.Dummy<IFoo>(), new IsProxyConstraint());
+                Assert.That(A.Dummy<IFoo>(), new IsFakeConstraint());
             }
         }
 

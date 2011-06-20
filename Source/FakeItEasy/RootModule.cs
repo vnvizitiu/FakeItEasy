@@ -109,7 +109,7 @@
 
             container.RegisterSingleton<IFakeScopeFactory>(c => new FakeScopeFactory());
 
-            container.Register<IFixtureInitializer>(c => new DefaultFixtureInitializer(c.Resolve<IFakeAndDummyManager>()));
+            container.Register<IFixtureInitializer>(c => new DefaultFixtureInitializer(c.Resolve<IFakeAndDummyManager>(), c.Resolve<ISutInitializer>()));
 
             container.RegisterSingleton<IEqualityComparer<IFakeObjectCall>>(c => new FakeCallEqualityComparer());
 
@@ -128,6 +128,8 @@
 
             container.RegisterSingleton<NUnitAssertionExceptionResolver>(
                 c => new NUnitAssertionExceptionResolver());
+
+            container.Register<ISutInitializer>(c => new DefaultSutInitializer(c.Resolve<IFakeAndDummyManager>()));
         }
 
         private class ExpressionCallMatcherFactory
