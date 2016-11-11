@@ -1,24 +1,23 @@
 namespace FakeItEasy.Tests.Core
 {
     using System;
-    using System.Diagnostics.CodeAnalysis;
     using FakeItEasy.Core;
     using FluentAssertions;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
     public class WrappedObjectRuleTests
     {
-        public interface ITypeWithOutputAndRefArguments
+        public interface ITypeWithReferenceArguments
         {
-            [SuppressMessage("Microsoft.Design", "CA1045:DoNotPassTypesByReference", MessageId = "0#", Justification = "Required for testing.")]
             void MethodWithReferenceArgument(ref int argument);
+        }
 
-            [SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "0#", Justification = "Required for testing.")]
+        public interface ITypeWithOutputArguments
+        {
             void MethodWithOutputArgument(out int argument);
         }
 
-        [Test]
+        [Fact]
         public void IsApplicableTo_should_return_true()
         {
             var rule = this.CreateRule();
@@ -26,7 +25,7 @@ namespace FakeItEasy.Tests.Core
             rule.IsApplicableTo(A.Fake<IFakeObjectCall>()).Should().BeTrue();
         }
 
-        [Test]
+        [Fact]
         public void NumberOfTimesToCall_should_be_null()
         {
             var rule = this.CreateRule();
@@ -34,8 +33,14 @@ namespace FakeItEasy.Tests.Core
             rule.NumberOfTimesToCall.Should().Be(null);
         }
 
-        [Test]
-        public void Apply_should_set_return_value_from_wrapped_object([Values(0, 1, 2, 3, 5, 8)] int returnValue)
+        [Theory]
+        [InlineData(0)]
+        [InlineData(1)]
+        [InlineData(2)]
+        [InlineData(3)]
+        [InlineData(5)]
+        [InlineData(8)]
+        public void Apply_should_set_return_value_from_wrapped_object(int returnValue)
         {
             var wrapped = A.Fake<IFoo>();
             A.CallTo(() => wrapped.Baz()).Returns(returnValue);
@@ -48,7 +53,7 @@ namespace FakeItEasy.Tests.Core
             call.ReturnValue.Should().Be(returnValue);
         }
 
-        [Test]
+        [Fact]
         public void Apply_should_use_arguments_from_call_when_calling_wrapped_object()
         {
             var wrapped = A.Fake<IFoo>();
@@ -61,16 +66,12 @@ namespace FakeItEasy.Tests.Core
             A.CallTo(() => wrapped.Bar("foo", "bar")).MustHaveHappened();
         }
 
-        [Test]
+        [Fact]
         public void Apply_should_assign_reference_arguments()
         {
             // Arrange
-            var wrapped = new TypeThatImplementsInterfaceWithOutputAndRefArguments
-            {
-                ReferenceArgumentThatWillBeApplied = 10
-            };
-
-            var call = FakeCall.Create<ITypeWithOutputAndRefArguments>("MethodWithReferenceArgument", new[] { Type.GetType("System.Int32&") }, new object[] { 0 });
+            var wrapped = new TypeWithReferenceArguments(10);
+            var call = FakeCall.Create<ITypeWithReferenceArguments>("MethodWithReferenceArgument", new[] { Type.GetType("System.Int32&") }, new object[] { 0 });
             var rule = this.CreateRule(wrapped);
 
             // Act
@@ -80,16 +81,12 @@ namespace FakeItEasy.Tests.Core
             call.Arguments[0].Should().Be(10);
         }
 
-        [Test]
+        [Fact]
         public void Apply_should_assign_out_arguments()
         {
             // Arrange
-            var wrapped = new TypeThatImplementsInterfaceWithOutputAndRefArguments
-            {
-                OutArgumentThatWillBeApplied = 10
-            };
-
-            var call = FakeCall.Create<ITypeWithOutputAndRefArguments>("MethodWithOutputArgument", new[] { Type.GetType("System.Int32&") }, new object[] { 0 });
+            var wrapped = new TypeWithOutputArguments(10);
+            var call = FakeCall.Create<ITypeWithOutputArguments>("MethodWithOutputArgument", new[] { Type.GetType("System.Int32&") }, new object[] { 0 });
             var rule = this.CreateRule(wrapped);
 
             // Act
@@ -109,21 +106,35 @@ namespace FakeItEasy.Tests.Core
             return new WrappedObjectRule(wrapped);
         }
 
-        private class TypeThatImplementsInterfaceWithOutputAndRefArguments
-            : ITypeWithOutputAndRefArguments
+        private class TypeWithReferenceArguments
+            : ITypeWithReferenceArguments
         {
-            public int ReferenceArgumentThatWillBeApplied { private get; set; }
+            private readonly int referenceArgumentThatWillBeApplied;
 
-            public int OutArgumentThatWillBeApplied { private get; set; }
+            public TypeWithReferenceArguments(int referenceArgumentThatWillBeApplied)
+            {
+                this.referenceArgumentThatWillBeApplied = referenceArgumentThatWillBeApplied;
+            }
 
             public void MethodWithReferenceArgument(ref int argument)
             {
-                argument = this.ReferenceArgumentThatWillBeApplied;
+                argument = this.referenceArgumentThatWillBeApplied;
+            }
+        }
+
+        private class TypeWithOutputArguments
+            : ITypeWithOutputArguments
+        {
+            private readonly int outArgumentThatWillBeApplied;
+
+            public TypeWithOutputArguments(int outArgumentThatWillBeApplied)
+            {
+                this.outArgumentThatWillBeApplied = outArgumentThatWillBeApplied;
             }
 
             public void MethodWithOutputArgument(out int argument)
             {
-                argument = this.OutArgumentThatWillBeApplied;
+                argument = this.outArgumentThatWillBeApplied;
             }
         }
     }

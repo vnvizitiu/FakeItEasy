@@ -1,6 +1,9 @@
 namespace FakeItEasy
 {
     using System;
+#if FEATURE_NETCORE_REFLECTION
+    using System.Reflection;
+#endif
 
     using FakeItEasy.Configuration;
 
@@ -20,7 +23,7 @@ namespace FakeItEasy
         /// <returns>The fake object.</returns>
         public static TFake Invokes<TFake>(this ICallbackConfiguration<TFake> configuration, Action actionToInvoke)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.Invokes(call => actionToInvoke());
         }
@@ -36,11 +39,11 @@ namespace FakeItEasy
         /// <returns>The fake object.</returns>
         public static TFake Invokes<TFake, T1>(this ICallbackConfiguration<TFake> configuration, Action<T1> actionToInvoke)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.Invokes(call =>
                 {
-                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.Method, NameOfInvokesFeature);
+                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.GetMethodInfo(), NameOfInvokesFeature);
 
                     actionToInvoke(call.GetArgument<T1>(0));
                 });
@@ -58,11 +61,11 @@ namespace FakeItEasy
         /// <returns>The fake object.</returns>
         public static TFake Invokes<TFake, T1, T2>(this ICallbackConfiguration<TFake> configuration, Action<T1, T2> actionToInvoke)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.Invokes(call =>
                 {
-                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.Method, NameOfInvokesFeature);
+                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.GetMethodInfo(), NameOfInvokesFeature);
 
                     actionToInvoke(call.GetArgument<T1>(0), call.GetArgument<T2>(1));
                 });
@@ -81,11 +84,11 @@ namespace FakeItEasy
         /// <returns>The fake object.</returns>
         public static TFake Invokes<TFake, T1, T2, T3>(this ICallbackConfiguration<TFake> configuration, Action<T1, T2, T3> actionToInvoke)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.Invokes(call =>
                 {
-                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.Method, NameOfInvokesFeature);
+                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.GetMethodInfo(), NameOfInvokesFeature);
 
                     actionToInvoke(call.GetArgument<T1>(0), call.GetArgument<T2>(1), call.GetArgument<T3>(2));
                 });
@@ -105,11 +108,11 @@ namespace FakeItEasy
         /// <returns>The fake object.</returns>
         public static TFake Invokes<TFake, T1, T2, T3, T4>(this ICallbackConfiguration<TFake> configuration, Action<T1, T2, T3, T4> actionToInvoke)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.Invokes(call =>
                 {
-                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.Method, NameOfInvokesFeature);
+                    ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(call.Method, actionToInvoke.GetMethodInfo(), NameOfInvokesFeature);
 
                     actionToInvoke(call.GetArgument<T1>(0), call.GetArgument<T2>(1), call.GetArgument<T3>(2), call.GetArgument<T4>(3));
                 });

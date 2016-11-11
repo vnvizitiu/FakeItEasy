@@ -1,15 +1,16 @@
 namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
 {
     using System;
+#if FEATURE_NETCORE_REFLECTION
     using System.Reflection;
+#endif
     using Castle.DynamicProxy;
     using FakeItEasy.Creation.CastleDynamicProxy;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
     public class CastleInvocationCallAdapterTests
     {
-        [Test]
+        [Fact]
         public void CallBaseMethod_should_call_Proceed_on_invocation()
         {
             var invocation = A.Fake<IInvocation>();
@@ -24,7 +25,7 @@ namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
             A.CallTo(() => invocation.Proceed()).MustHaveHappened();
         }
 
-        [Test]
+        [Fact]
         public void SetArgumentValue_sets_the_argument_value_of_the_invocation()
         {
             var invocation = A.Fake<IInvocation>();

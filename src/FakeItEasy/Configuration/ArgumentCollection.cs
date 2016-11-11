@@ -11,13 +11,13 @@ namespace FakeItEasy.Configuration
     /// <summary>
     ///   A collection of method arguments.
     /// </summary>
+#if FEATURE_BINARY_SERIALIZATION
     [Serializable]
+#endif
     [SuppressMessage("Microsoft.Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix", Justification = "Best name to describe the type.")]
     public class ArgumentCollection
         : IEnumerable<object>
     {
-        private readonly string[] argumentNamesField;
-
         /// <summary>
         ///   The arguments this collection contains.
         /// </summary>
@@ -31,16 +31,16 @@ namespace FakeItEasy.Configuration
         [DebuggerStepThrough]
         internal ArgumentCollection(object[] arguments, IEnumerable<string> argumentNames)
         {
-            Guard.AgainstNull(arguments, "arguments");
-            Guard.AgainstNull(argumentNames, "argumentNames");
+            Guard.AgainstNull(arguments, nameof(arguments));
+            Guard.AgainstNull(argumentNames, nameof(argumentNames));
 
             if (arguments.Length != argumentNames.Count())
             {
-                throw new ArgumentException(ExceptionMessages.WrongNumberOfArgumentNamesMessage, "argumentNames");
+                throw new ArgumentException(ExceptionMessages.WrongNumberOfArgumentNamesMessage, nameof(argumentNames));
             }
 
             this.arguments = arguments;
-            this.argumentNamesField = argumentNames.ToArray();
+            this.ArgumentNames = argumentNames.ToArray();
         }
 
         /// <summary>
@@ -66,10 +66,7 @@ namespace FakeItEasy.Configuration
         /// <summary>
         ///   Gets the names of the arguments in the list.
         /// </summary>
-        public IEnumerable<string> ArgumentNames
-        {
-            get { return this.argumentNamesField; }
-        }
+        public IEnumerable<string> ArgumentNames { get; }
 
         /// <summary>
         ///   Gets the argument at the specified index.
@@ -132,7 +129,7 @@ namespace FakeItEasy.Configuration
         [DebuggerStepThrough]
         private static IEnumerable<string> GetArgumentNames(MethodInfo method)
         {
-            Guard.AgainstNull(method, "method");
+            Guard.AgainstNull(method, nameof(method));
 
             return method.GetParameters().Select(x => x.Name);
         }
@@ -140,7 +137,7 @@ namespace FakeItEasy.Configuration
         private int GetArgumentIndex(string argumentName)
         {
             var index = 0;
-            foreach (var name in this.argumentNamesField)
+            foreach (var name in this.ArgumentNames)
             {
                 if (name.Equals(argumentName, StringComparison.Ordinal))
                 {
@@ -150,7 +147,7 @@ namespace FakeItEasy.Configuration
                 index++;
             }
 
-            throw new ArgumentException(ExceptionMessages.ArgumentNameDoesNotExist, "argumentName");
+            throw new ArgumentException(ExceptionMessages.ArgumentNameDoesNotExist, nameof(argumentName));
         }
     }
 }

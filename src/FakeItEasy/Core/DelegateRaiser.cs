@@ -32,9 +32,9 @@ namespace FakeItEasy.Core
             argumentProviderMap.AddArgumentProvider(this.EventHandler as Delegate, this);
         }
 
-        private TEventHandler EventHandler { get; set; }
+        private TEventHandler EventHandler { get; }
 
-        private object[] EventArguments { get; set; }
+        private object[] EventArguments { get; }
 
         /// <summary>
         /// Converts the <c>DelegateRaiser</c> to a <c>TEventHandler</c>.
@@ -44,7 +44,7 @@ namespace FakeItEasy.Core
         [SuppressMessage("Microsoft.Usage", "CA2225:OperatorOverloadsHaveNamedAlternates", Justification = "Provides the event raising syntax.")]
         public static implicit operator TEventHandler(DelegateRaiser<TEventHandler> raiser)
         {
-            Guard.AgainstNull(raiser, "raiser");
+            Guard.AgainstNull(raiser, nameof(raiser));
 
             return raiser.EventHandler;
         }
@@ -68,7 +68,7 @@ namespace FakeItEasy.Core
 
             throw new FakeConfigurationException(
                 "The event has the signature ({0}), but the provided arguments have types ({1})."
-                    .FormatInvariant(fakeSignature, actionSignature, "Raise"));
+                    .FormatInvariant(fakeSignature, actionSignature));
         }
 
         private static bool IsCallSignatureSatisfiedByValues(MethodInfo callMethod, object[] values)
@@ -84,7 +84,7 @@ namespace FakeItEasy.Core
             {
                 if (values[i] == null)
                 {
-                    if (callMethodParameterTypes[i].IsValueType)
+                    if (callMethodParameterTypes[i].GetTypeInfo().IsValueType)
                     {
                         return false;
                     }

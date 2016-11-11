@@ -34,7 +34,7 @@ namespace FakeItEasy
         [SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures", Justification = "This is by design when using the Expression-, Action- and Func-types.")]
         public Fake(Action<IFakeOptions<T>> optionsBuilder)
         {
-            Guard.AgainstNull(optionsBuilder, "optionsBuilder");
+            Guard.AgainstNull(optionsBuilder, nameof(optionsBuilder));
 
             this.FakedObject = CreateFake(optionsBuilder);
         }
@@ -42,20 +42,15 @@ namespace FakeItEasy
         /// <summary>
         /// Gets the faked object.
         /// </summary>
-        public T FakedObject { get; private set; }
+        public T FakedObject { get; }
 
         /// <summary>
         /// Gets all calls made to the faked object.
         /// </summary>
-        public IEnumerable<ICompletedFakeObjectCall> RecordedCalls
-        {
-            get { return FakeItEasy.Fake.GetCalls(this.FakedObject); }
-        }
+        public IEnumerable<ICompletedFakeObjectCall> RecordedCalls => FakeItEasy.Fake.GetCalls(this.FakedObject);
 
-        private static IFakeCreatorFacade FakeCreator
-        {
-            get { return ServiceLocator.Current.Resolve<IFakeCreatorFacade>(); }
-        }
+        private static IFakeAndDummyManager FakeAndDummyManager =>
+            ServiceLocator.Current.Resolve<IFakeAndDummyManager>();
 
         private IStartConfiguration<T> StartConfiguration
         {
@@ -100,7 +95,9 @@ namespace FakeItEasy
 
         private static T CreateFake(Action<IFakeOptions<T>> optionsBuilder)
         {
-            return FakeCreator.CreateFake(optionsBuilder);
+            Guard.AgainstNull(optionsBuilder, nameof(optionsBuilder));
+
+            return (T)FakeAndDummyManager.CreateFake(typeof(T), options => optionsBuilder((IFakeOptions<T>)options));
         }
     }
 }

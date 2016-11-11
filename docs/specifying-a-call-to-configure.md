@@ -36,7 +36,7 @@ Use `A.CallToSet` to configure the `set` behavior of read/write properties:
 
 ```csharp
 A.CallToSet(() => fakeShop.Address).To("123 Fake Street").CallsBaseMethod();
-A.CallToSet(() => fakeShop.Address).To(() => A<string>.That.StartsWith("123").DoesNothing();
+A.CallToSet(() => fakeShop.Address).To(() => A<string>.That.StartsWith("123")).DoesNothing();
 A.CallToSet(() => fakeShop.Address).DoesNothing(); // ignores the value that's set
 ```
 
@@ -55,6 +55,10 @@ A.CallTo(fakeShop).Throws(new Exception());
 // Or limit the calls by return type
 A.CallTo(fakeShop).WithReturnType<string>().Returns("sugar tastes good");
 
+// Or limit the calls to methods that return a value. Note that it will throw at runtime
+// if the configured return value doesn't match the called method's return type.
+A.CallTo(fakeShop).WithNonVoidReturnType().Returns("sugar tastes good");
+
 // Or create a sophisticated test with a predicate that acts on an IFakeObjectCall
 A.CallTo(fakeShop).Where(call => call.Arguments.Count > 4)
                   .Throws(new Exception("too many arguments is bad");
@@ -68,9 +72,14 @@ A.CallTo(fakeShop).Where(call => call.Method.Name == "ProtectedCalculateSalesFor
                   .WithReturnType<double>()
                   .Returns(4741.71);
 
-// refers to the Address property's setter
+// Use the conventional .NET prefix "get_" to refer to a property's getter:
+A.CallTo(fakeShop).Where(call => call.Method.Name == "get_Address")
+                  .WithReturnType<string>()
+                  .Returns("123 Fake Street");
+
+// Use the conventional .NET prefix "set_" to refer to a property's setter:
 A.CallTo(fakeShop).Where(call => call.Method.Name == "set_Address")
-                  .Throws(new Exception("we can't move");
+                  .Throws(new Exception("we can't move"));
 ```
 
 ## VB.Net

@@ -2,14 +2,17 @@ namespace FakeItEasy.Tests
 {
     using System;
     using System.Linq;
+#if NETCORE
+    using System.Reflection;
+#endif
     using FakeItEasy.Creation;
+    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
-    using NUnit.Framework;
-    using TestHelpers;
+    using Xunit;
 
     public class FakeOptionsBuilderTests
     {
-        [Test]
+        [Fact]
         public void BuildOptions_should_throw_when_passed_wrong_type()
         {
             // Arrange
@@ -23,11 +26,11 @@ namespace FakeItEasy.Tests
                 .WithMessage("Specified type 'System.String' is not valid. Only 'FakeItEasy.Tests.FakeOptionsBuilderTests' is allowed.");
         }
 
-        [Test]
+        [Fact]
         public void Built_in_options_builders_should_have_lower_than_default_priority()
         {
             // Arrange
-            var allOptionsBuilders = typeof(A).Assembly.GetTypes()
+            var allOptionsBuilders = typeof(A).GetTypeInformation().Assembly.GetTypes()
                 .Where(t => t.CanBeInstantiatedAs(typeof(IFakeOptionsBuilder)))
                 .Select(Activator.CreateInstance)
                 .Cast<IFakeOptionsBuilder>();

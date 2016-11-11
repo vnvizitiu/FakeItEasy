@@ -42,6 +42,15 @@ A.CollectionOfDummy<Book>(10);
 
 This will return an `IList` containing 10 dummy `Book` instances.
 
+For cases where the type of dummy isn't statically known, non-generic methods are also available. These are usually only required when writing extensions for FakeItEasy, so they live in the `FakeItEasy.Sdk` namespace:
+```csharp
+using FakeItEasy.Sdk;
+...
+var type = GetTypeOfDummy();
+object dummy = Create.Dummy(type);
+IList<object> dummies = Create.CollectionOfDummy(type, 10);
+```
+
 ## How FakeItEasy uses them
 
 When [creating Fakes](creating-fakes.md) or Dummies of class types,

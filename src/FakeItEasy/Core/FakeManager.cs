@@ -13,10 +13,11 @@ namespace FakeItEasy.Core
     /// of fake object calls by using a set of rules. User defined rules can be inserted
     /// by using the AddRule-method.
     /// </summary>
+#if FEATURE_BINARY_SERIALIZATION
     [Serializable]
+#endif
     public partial class FakeManager : IFakeCallProcessor
     {
-        private readonly LinkedList<CallRuleMetadata> allUserRulesField;
         private readonly CallRuleMetadata[] postUserRules;
         private readonly CallRuleMetadata[] preUserRules;
         private readonly ConcurrentQueue<ICompletedFakeObjectCall> recordedCalls;
@@ -30,22 +31,22 @@ namespace FakeItEasy.Core
         /// <param name="proxy">The faked proxy object.</param>
         internal FakeManager(Type fakeObjectType, object proxy)
         {
-            Guard.AgainstNull(fakeObjectType, "fakeObjectType");
-            Guard.AgainstNull(proxy, "proxy");
+            Guard.AgainstNull(fakeObjectType, nameof(fakeObjectType));
+            Guard.AgainstNull(proxy, nameof(proxy));
 
             this.objectReference = new WeakReference(proxy);
             this.FakeObjectType = fakeObjectType;
 
             this.preUserRules = new[]
                                     {
-                                        new CallRuleMetadata { Rule = new EventRule { FakeManager = this } }
+                                        new CallRuleMetadata { Rule = new EventRule(this) }
                                     };
-            this.allUserRulesField = new LinkedList<CallRuleMetadata>();
+            this.AllUserRules = new LinkedList<CallRuleMetadata>();
             this.postUserRules = new[]
                                      {
-                                         new CallRuleMetadata { Rule = new ObjectMemberRule { FakeManager = this } },
-                                         new CallRuleMetadata { Rule = new AutoFakePropertyRule { FakeManager = this } },
-                                         new CallRuleMetadata { Rule = new PropertySetterRule { FakeManager = this } },
+                                         new CallRuleMetadata { Rule = new ObjectMemberRule(this) },
+                                         new CallRuleMetadata { Rule = new AutoFakePropertyRule(this) },
+                                         new CallRuleMetadata { Rule = new PropertySetterRule(this) },
                                          new CallRuleMetadata { Rule = new DefaultReturnValueRule() }
                                      };
 
@@ -65,36 +66,25 @@ namespace FakeItEasy.Core
         /// Gets the faked proxy object.
         /// </summary>
         [SuppressMessage("Microsoft.Naming", "CA1716:IdentifiersShouldNotMatchKeywords", MessageId = "Object", Justification = "Renaming this property would be a breaking change.")]
-        public virtual object Object
-        {
-            get
-            {
-                return this.objectReference.Target;
-            }
-        }
+        public virtual object Object => this.objectReference.Target;
 
         /// <summary>
         /// Gets the faked type.
         /// </summary>
-        public virtual Type FakeObjectType { get; private set; }
+        public virtual Type FakeObjectType { get; }
 
         /// <summary>
         /// Gets the interceptions that are currently registered with the fake object.
         /// </summary>
         public virtual IEnumerable<IFakeObjectCallRule> Rules
         {
-            get { return this.allUserRulesField.Select(x => x.Rule); }
+            get { return this.AllUserRules.Select(x => x.Rule); }
         }
 
-        internal LinkedList<CallRuleMetadata> AllUserRules
-        {
-            get { return this.allUserRulesField; }
-        }
+        internal LinkedList<CallRuleMetadata> AllUserRules { get; }
 
-        private IEnumerable<CallRuleMetadata> AllRules
-        {
-            get { return this.preUserRules.Concat(this.AllUserRules.Concat(this.postUserRules)); }
-        }
+        private IEnumerable<CallRuleMetadata> AllRules =>
+            this.preUserRules.Concat(this.AllUserRules.Concat(this.postUserRules));
 
         /// <summary>
         /// Adds a call rule to the fake object.
@@ -120,7 +110,7 @@ namespace FakeItEasy.Core
         /// <param name="rule">The rule to remove.</param>
         public virtual void RemoveRule(IFakeObjectCallRule rule)
         {
-            Guard.AgainstNull(rule, "rule");
+            Guard.AgainstNull(rule, nameof(rule));
 
             var ruleToRemove = this.AllUserRules.FirstOrDefault(x => x.Rule.Equals(rule));
             this.AllUserRules.Remove(ruleToRemove);
@@ -189,7 +179,7 @@ namespace FakeItEasy.Core
         /// </summary>
         internal virtual void ClearUserRules()
         {
-            this.allUserRulesField.Clear();
+            this.AllUserRules.Clear();
         }
 
         private static void ApplyRule(CallRuleMetadata rule, IInterceptedFakeObjectCall fakeObjectCall)
@@ -200,9 +190,9 @@ namespace FakeItEasy.Core
 
         private void MoveRuleToFront(CallRuleMetadata rule)
         {
-            if (this.allUserRulesField.Remove(rule))
+            if (this.AllUserRules.Remove(rule))
             {
-                this.allUserRulesField.AddFirst(rule);
+                this.AllUserRules.AddFirst(rule);
             }
         }
 

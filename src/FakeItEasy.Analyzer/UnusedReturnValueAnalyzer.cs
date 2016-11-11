@@ -33,7 +33,7 @@ namespace FakeItEasy.Analyzer
                 return;
             }
 
-            var methodSymbol = GetCalledMethodSymbol(call, context);
+            var methodSymbol = SymbolHelpers.GetCalledMethodSymbol(call, context);
             if (methodSymbol == null)
             {
                 return;
@@ -48,17 +48,11 @@ namespace FakeItEasy.Analyzer
                 return;
             }
 
-            if (call.Parent is StatementSyntax)
+            if (call.Parent is ExpressionStatementSyntax)
             {
                 var diagnostic = Diagnostic.Create(descriptor, call.GetLocation(), call.ToString());
                 context.ReportDiagnostic(diagnostic);
             }
-        }
-
-        private static IMethodSymbol GetCalledMethodSymbol(InvocationExpressionSyntax call, SyntaxNodeAnalysisContext context)
-        {
-            var memberAccess = call?.Expression as MemberAccessExpressionSyntax;
-            return context.SemanticModel.GetSymbolInfo(memberAccess?.Name).Symbol as IMethodSymbol;
         }
 
         private static ImmutableDictionary<string, DiagnosticDescriptor> CreateDiagnosticsMap()
@@ -73,6 +67,7 @@ namespace FakeItEasy.Analyzer
                 "FakeItEasy.ArgumentValidationConfigurationExtensions.WithAnyArguments`1",
                 "FakeItEasy.WhereConfigurationExtensions.Where`1",
                 "FakeItEasy.Configuration.IAnyCallConfigurationWithNoReturnTypeSpecified.WithReturnType`1",
+                "FakeItEasy.Configuration.IAnyCallConfigurationWithNoReturnTypeSpecified.WithNonVoidReturnType",
                 "FakeItEasy.Configuration.IArgumentValidationConfiguration`1.WhenArgumentsMatch",
                 "FakeItEasy.Configuration.IPropertySetterAnyValueConfiguration`1.To",
                 "FakeItEasy.Configuration.IWhereConfiguration`1.Where"

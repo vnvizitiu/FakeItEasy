@@ -1,30 +1,45 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
     using System.Collections.Generic;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
-    internal class DerivedTypeArgumentTests
+    public class DerivedTypeArgumentTests
         : ArgumentConstraintTestBase<string>
     {
-        protected override IEnumerable<object> InvalidValues
+        protected override string ExpectedDescription => "string that is \"foo\" or is empty";
+
+        public static IEnumerable<object[]> InvalidValues()
         {
-            get { return new object[] { "bar", 123, 12.3f }; }
+            return TestCases.FromObject(
+                "bar",
+                123,
+                12.3f);
         }
 
-        protected override IEnumerable<object> ValidValues
+        public static IEnumerable<object[]> ValidValues()
         {
-            get { return new object[] { "foo", null }; }
+            return TestCases.FromObject(
+                "foo",
+                null);
         }
 
-        protected override string ExpectedDescription
+        [Theory]
+        [MemberData(nameof(InvalidValues))]
+        public override void IsValid_should_return_false_for_invalid_values(object invalidValue)
         {
-            get { return "string that is \"foo\" or is empty"; }
+            base.IsValid_should_return_false_for_invalid_values(invalidValue);
+        }
+
+        [Theory]
+        [MemberData(nameof(ValidValues))]
+        public override void IsValid_should_return_true_for_valid_values(object validValue)
+        {
+            base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
         protected override void CreateConstraint(IArgumentConstraintManager<string> scope)
         {
-            FakeItEasy.Guard.AgainstNull(scope, "scope");
+            Guard.AgainstNull(scope, nameof(scope));
 
             scope.Matches(x => x == null || x == "foo", x => x.Write("string that is \"foo\" or is empty"));
         }

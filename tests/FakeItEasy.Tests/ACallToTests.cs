@@ -1,18 +1,32 @@
 namespace FakeItEasy.Tests
 {
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using System.Linq.Expressions;
     using FakeItEasy.Configuration;
     using FluentAssertions;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
     public class ACallToTests
         : ConfigurableServiceLocatorTestBase
     {
-        private IFakeConfigurationManager configurationManager;
+        private readonly IFakeConfigurationManager configurationManager;
 
-        [Test]
+        public ACallToTests()
+        {
+            this.configurationManager = A.Fake<IFakeConfigurationManager>(x => x.Wrapping(ServiceLocator.Current.Resolve<IFakeConfigurationManager>()));
+            this.StubResolve(this.configurationManager);
+        }
+
+        public static IEnumerable<object[]> CallSpecificationActions =>
+            TestCases.FromObject<Action<IFoo>>(
+                foo => A.CallTo(() => foo.Bar()),
+                foo => A.CallTo(() => foo.Baz()),
+                foo => A.CallToSet(() => foo.SomeProperty),
+                foo => A.CallTo(foo));
+
+        [Fact]
         public void CallTo_with_void_call_should_return_configuration_from_configuration_manager()
         {
             // Arrange
@@ -29,7 +43,7 @@ namespace FakeItEasy.Tests
             result.Should().BeSameAs(configuration);
         }
 
-        [Test]
+        [Fact]
         public void CallTo_with_function_call_should_return_configuration_from_configuration_manager()
         {
             // Arrange
@@ -46,10 +60,20 @@ namespace FakeItEasy.Tests
             result.Should().BeSameAs(configuration);
         }
 
-        protected override void OnSetup()
+        [Theory]
+        [MemberData(nameof(CallSpecificationActions))]
+        public void CallTo_should_not_add_rule_to_manager(Action<IFoo> action)
         {
-            this.configurationManager = A.Fake<IFakeConfigurationManager>(x => x.Wrapping(ServiceLocator.Current.Resolve<IFakeConfigurationManager>()));
-            this.StubResolve<IFakeConfigurationManager>(this.configurationManager);
+            // Arrange
+            var foo = A.Fake<IFoo>();
+            var manager = Fake.GetFakeManager(foo);
+            var initialRules = manager.Rules.ToList();
+
+            // Act
+            action(foo);
+
+            // Assert
+            manager.Rules.Should().Equal(initialRules);
         }
     }
 }

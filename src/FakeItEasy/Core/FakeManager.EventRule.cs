@@ -9,24 +9,32 @@ namespace FakeItEasy.Core
     /// <content>Event rule.</content>
     public partial class FakeManager
     {
+#if FEATURE_BINARY_SERIALIZATION
         [Serializable]
+#endif
         [SuppressMessage("Microsoft.Design", "CA1001:TypesThatOwnDisposableFieldsShouldBeDisposable", Justification = "Would provide no benefit since there is no place from where to call the Dispose-method.")]
         private class EventRule
             : IFakeObjectCallRule
         {
+            private readonly FakeManager fakeManager;
+
+#if FEATURE_BINARY_SERIALIZATION
             [NonSerialized]
+#endif
             private readonly EventHandlerArgumentProviderMap eventHandlerArgumentProviderMap =
                 ServiceLocator.Current.Resolve<EventHandlerArgumentProviderMap>();
 
+#if FEATURE_BINARY_SERIALIZATION
             [NonSerialized]
+#endif
             private Dictionary<object, Delegate> registeredEventHandlersField;
 
-            public FakeManager FakeManager { private get; set; }
-
-            public int? NumberOfTimesToCall
+            public EventRule(FakeManager fakeManager)
             {
-                get { return null; }
+                this.fakeManager = fakeManager;
             }
+
+            public int? NumberOfTimesToCall => null;
 
             private Dictionary<object, Delegate> RegisteredEventHandlers
             {
@@ -43,7 +51,7 @@ namespace FakeItEasy.Core
 
             public bool IsApplicableTo(IFakeObjectCall fakeObjectCall)
             {
-                Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+                Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
                 return EventCall.GetEvent(fakeObjectCall.Method) != null;
             }
@@ -53,26 +61,6 @@ namespace FakeItEasy.Core
                 var eventCall = EventCall.GetEventCall(fakeObjectCall);
 
                 this.HandleEventCall(eventCall);
-            }
-
-            // Attempts to preserve the stack trace of an existing exception when re-throw via throw or throw ex.
-            // Nicked from
-            // http://weblogs.asp.net/fmarguerie/archive/2008/01/02/rethrowing-exceptions-and-preserving-the-full-call-stack-trace.aspx.
-            // If reduced trust context (for example) precludes
-            // invoking internal members on Exception, the stack trace will not be preserved.
-            [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Appropriate in try method.")]
-            private static void TryPreserveStackTrace(Exception exception)
-            {
-                try
-                {
-                    var preserveStackTrace = typeof(Exception).GetMethod(
-                                                                    "InternalPreserveStackTrace",
-                                                                    BindingFlags.Instance | BindingFlags.NonPublic);
-                    preserveStackTrace.Invoke(exception, null);
-                }
-                catch
-                {
-                }
             }
 
             private void HandleEventCall(EventCall eventCall)
@@ -148,7 +136,7 @@ namespace FakeItEasy.Core
 
                 if (this.RegisteredEventHandlers.TryGetValue(call.Event, out raiseMethod))
                 {
-                    var arguments = argumentProvider.GetEventArguments(this.FakeManager.Object);
+                    var arguments = argumentProvider.GetEventArguments(this.fakeManager.Object);
 
                     try
                     {
@@ -156,14 +144,9 @@ namespace FakeItEasy.Core
                     }
                     catch (TargetInvocationException ex)
                     {
-                        if (ex.InnerException != null)
-                        {
-                            // Exceptions thrown by event handlers should propagate outward as is, not
-                            // be wrapped in a TargetInvocationException.
-                            TryPreserveStackTrace(ex.InnerException);
-                            throw ex.InnerException;
-                        }
-
+                        // Exceptions thrown by event handlers should propagate outward as is, not
+                        // be wrapped in a TargetInvocationException.
+                        ex.InnerException?.Rethrow();
                         throw;
                     }
                 }

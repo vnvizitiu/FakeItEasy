@@ -1,5 +1,7 @@
 namespace FakeItEasy.Core
 {
+    using System.Reflection;
+
     /// <summary>
     /// A call rule that applies to any call and just delegates the
     /// call to the wrapped object.
@@ -26,10 +28,7 @@ namespace FakeItEasy.Core
         /// to null its infinitely valid.
         /// </summary>
         /// <value></value>
-        public int? NumberOfTimesToCall
-        {
-            get { return null; }
-        }
+        public int? NumberOfTimesToCall => null;
 
         /// <summary>
         /// Gets whether this interceptor is applicable to the specified
@@ -50,10 +49,20 @@ namespace FakeItEasy.Core
         /// <param name="fakeObjectCall">The call to apply the interceptor to.</param>
         public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
             var parameters = fakeObjectCall.Arguments.GetUnderlyingArgumentsArray();
-            var valueFromWrappedInstance = fakeObjectCall.Method.Invoke(this.wrappedObject, parameters);
+            object valueFromWrappedInstance;
+            try
+            {
+                valueFromWrappedInstance = fakeObjectCall.Method.Invoke(this.wrappedObject, parameters);
+            }
+            catch (TargetInvocationException ex)
+            {
+                ex.InnerException?.Rethrow();
+                throw;
+            }
+
             fakeObjectCall.SetReturnValue(valueFromWrappedInstance);
         }
     }

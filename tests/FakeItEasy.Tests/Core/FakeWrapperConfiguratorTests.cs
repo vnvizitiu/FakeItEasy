@@ -1,20 +1,21 @@
 namespace FakeItEasy.Tests.Core
 {
     using System.Linq;
+    using System.Reflection;
     using FakeItEasy.Core;
     using FakeItEasy.Creation;
+#if FEATURE_SELF_INITIALIZED_FAKES
     using FakeItEasy.SelfInitializedFakes;
+#endif
     using FluentAssertions;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
     public class FakeWrapperConfiguratorTests
     {
-        private IFoo faked;
-        private FakeWrapperConfigurator<IFoo> wrapperConfigurator;
+        private readonly IFoo faked;
+        private readonly FakeWrapperConfigurator<IFoo> wrapperConfigurator;
 
-        [SetUp]
-        public void Setup()
+        public FakeWrapperConfiguratorTests()
         {
             this.faked = A.Fake<IFoo>();
 
@@ -22,7 +23,7 @@ namespace FakeItEasy.Tests.Core
             this.wrapperConfigurator = new FakeWrapperConfigurator<IFoo>(A.Fake<IFakeOptions<IFoo>>(), wrapped);
         }
 
-        [Test]
+        [Fact]
         public void ConfigureFakeToWrap_should_add_WrappedFakeObjectRule_to_fake_object()
         {
             // Arrange
@@ -35,11 +36,12 @@ namespace FakeItEasy.Tests.Core
                 .Should().Contain(item => item.GetType().IsAssignableFrom(typeof(WrappedObjectRule)));
         }
 
-        [Test]
+#if FEATURE_SELF_INITIALIZED_FAKES
+        [Fact]
         public void ConfigureFakeToWrap_should_add_self_initialization_rule_when_recorder_is_specified()
         {
             // Arrange
-            this.wrapperConfigurator.Recorder = A.Fake<ISelfInitializingFakeRecorder>();
+            this.wrapperConfigurator.RecordedBy(A.Fake<ISelfInitializingFakeRecorder>());
 
             // Act
             this.wrapperConfigurator.ConfigureFakeToWrap(this.faked);
@@ -49,7 +51,7 @@ namespace FakeItEasy.Tests.Core
                 .Should().BeOfType<SelfInitializationRule>();
         }
 
-        [Test]
+        [Fact]
         public void ConfigureFakeToWrap_should_not_add_self_initialization_rule_when_recorder_is_not_specified()
         {
             // Arrange
@@ -61,5 +63,6 @@ namespace FakeItEasy.Tests.Core
             Fake.GetFakeManager(this.faked).Rules
                 .Should().NotContain(item => item.GetType().IsAssignableFrom(typeof(SelfInitializationRule)));
         }
+#endif
     }
 }

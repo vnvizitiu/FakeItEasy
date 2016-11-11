@@ -3,19 +3,15 @@ namespace FakeItEasy.Core
     using System;
     using FakeItEasy.Creation;
 
+#if FEATURE_BINARY_SERIALIZATION
     [Serializable]
+#endif
     internal class DefaultReturnValueRule
         : IFakeObjectCallRule
     {
-        public int? NumberOfTimesToCall
-        {
-            get { return null; }
-        }
+        public int? NumberOfTimesToCall => null;
 
-        private static IFakeAndDummyManager FakeManager
-        {
-            get { return ServiceLocator.Current.Resolve<IFakeAndDummyManager>(); }
-        }
+        private static IFakeAndDummyManager FakeManager => ServiceLocator.Current.Resolve<IFakeAndDummyManager>();
 
         public static object ResolveReturnValue(IInterceptedFakeObjectCall fakeObjectCall)
         {
@@ -35,7 +31,7 @@ namespace FakeItEasy.Core
 
         public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
             var returnValue = ResolveReturnValue(fakeObjectCall);
             fakeObjectCall.SetReturnValue(returnValue);

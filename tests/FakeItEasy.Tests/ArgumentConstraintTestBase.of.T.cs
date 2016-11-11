@@ -1,20 +1,16 @@
 namespace FakeItEasy.Tests
 {
+    using System.Diagnostics.CodeAnalysis;
     using FakeItEasy.Core;
-    using NUnit.Framework;
 
-    internal abstract class ArgumentConstraintTestBase<T>
+    public abstract class ArgumentConstraintTestBase<T>
         : ArgumentConstraintTestBase
     {
-        [SetUp]
-        public void Setup()
+        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors",
+            Justification = "CreateCosntraint has no unsafe side effects.")]
+        protected ArgumentConstraintTestBase()
         {
             this.CreateConstraint(new DefaultArgumentConstraintManager<T>(x => this.ConstraintField = x));
-            this.OnSetup();
-        }
-
-        protected virtual void OnSetup()
-        {
         }
 
         protected abstract void CreateConstraint(IArgumentConstraintManager<T> scope);

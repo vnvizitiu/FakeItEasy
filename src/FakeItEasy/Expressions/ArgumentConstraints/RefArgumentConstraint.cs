@@ -14,7 +14,7 @@ namespace FakeItEasy.Expressions.ArgumentConstraints
         /// <param name="value">The value to be used when implicitly assigning values to a call's ref parameter.</param>
         public RefArgumentConstraint(IArgumentConstraint baseConstraint, object value)
         {
-            Guard.AgainstNull(baseConstraint, "baseConstraint");
+            Guard.AgainstNull(baseConstraint, nameof(baseConstraint));
 
             this.baseConstraint = baseConstraint;
             this.Value = value;
@@ -24,7 +24,7 @@ namespace FakeItEasy.Expressions.ArgumentConstraints
         /// Gets the value that was used when specifying the constraint.
         /// Used for implicit assignment of ref parameter values.
         /// </summary>
-        public object Value { get; private set; }
+        public object Value { get; }
 
         public void WriteDescription(IOutputWriter writer)
         {

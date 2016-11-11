@@ -1,6 +1,9 @@
 namespace FakeItEasy
 {
     using System;
+#if FEATURE_NETCORE_REFLECTION
+    using System.Reflection;
+#endif
     using FakeItEasy.Configuration;
 
     /// <summary>
@@ -22,8 +25,8 @@ namespace FakeItEasy
         public static IAfterCallSpecifiedConfiguration AssignsOutAndRefParameters(
             this IOutAndRefParametersConfiguration configuration, params object[] values)
         {
-            Guard.AgainstNull(configuration, "configuration");
-            Guard.AgainstNull(values, "values");
+            Guard.AgainstNull(configuration, nameof(configuration));
+            Guard.AgainstNull(values, nameof(values));
 
             return configuration.AssignsOutAndRefParametersLazily(x => values);
         }
@@ -44,12 +47,12 @@ namespace FakeItEasy
         public static IAfterCallSpecifiedConfiguration AssignsOutAndRefParametersLazily<T1>(
             this IOutAndRefParametersConfiguration configuration, Func<T1, object[]> valueProducer)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.AssignsOutAndRefParametersLazily(call =>
             {
                 ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(
-                    call.Method, valueProducer.Method, NameOfOutRefLazilyFeature);
+                    call.Method, valueProducer.GetMethodInfo(), NameOfOutRefLazilyFeature);
 
                 return valueProducer(call.GetArgument<T1>(0));
             });
@@ -73,12 +76,12 @@ namespace FakeItEasy
             AssignsOutAndRefParametersLazily<T1, T2>(
             this IOutAndRefParametersConfiguration configuration, Func<T1, T2, object[]> valueProducer)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.AssignsOutAndRefParametersLazily(call =>
             {
                 ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(
-                    call.Method, valueProducer.Method, NameOfOutRefLazilyFeature);
+                    call.Method, valueProducer.GetMethodInfo(), NameOfOutRefLazilyFeature);
 
                 return valueProducer(call.GetArgument<T1>(0), call.GetArgument<T2>(1));
             });
@@ -103,12 +106,12 @@ namespace FakeItEasy
             AssignsOutAndRefParametersLazily<T1, T2, T3>(
             this IOutAndRefParametersConfiguration configuration, Func<T1, T2, T3, object[]> valueProducer)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.AssignsOutAndRefParametersLazily(call =>
             {
                 ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(
-                    call.Method, valueProducer.Method, NameOfOutRefLazilyFeature);
+                    call.Method, valueProducer.GetMethodInfo(), NameOfOutRefLazilyFeature);
 
                 return valueProducer(call.GetArgument<T1>(0), call.GetArgument<T2>(1), call.GetArgument<T3>(2));
             });
@@ -133,12 +136,12 @@ namespace FakeItEasy
         public static IAfterCallSpecifiedConfiguration AssignsOutAndRefParametersLazily<T1, T2, T3, T4>(
             this IOutAndRefParametersConfiguration configuration, Func<T1, T2, T3, T4, object[]> valueProducer)
         {
-            Guard.AgainstNull(configuration, "configuration");
+            Guard.AgainstNull(configuration, nameof(configuration));
 
             return configuration.AssignsOutAndRefParametersLazily(call =>
             {
                 ValueProducerSignatureHelper.AssertThatValueProducerSignatureSatisfiesCallSignature(
-                    call.Method, valueProducer.Method, NameOfOutRefLazilyFeature);
+                    call.Method, valueProducer.GetMethodInfo(), NameOfOutRefLazilyFeature);
 
                 return valueProducer(
                     call.GetArgument<T1>(0), call.GetArgument<T2>(1), call.GetArgument<T3>(2), call.GetArgument<T4>(3));

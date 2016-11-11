@@ -28,10 +28,7 @@ namespace FakeItEasy.SelfInitializedFakes
         /// to null its infinitely valid.
         /// </summary>
         /// <value></value>
-        public int? NumberOfTimesToCall
-        {
-            get { return this.wrappedRule.NumberOfTimesToCall; }
-        }
+        public int? NumberOfTimesToCall => this.wrappedRule.NumberOfTimesToCall;
 
         /// <summary>
         /// Gets whether this interceptor is applicable to the specified
@@ -52,7 +49,7 @@ namespace FakeItEasy.SelfInitializedFakes
         /// <param name="fakeObjectCall">The call to apply the interceptor to.</param>
         public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
             if (this.recorder.IsRecording)
             {

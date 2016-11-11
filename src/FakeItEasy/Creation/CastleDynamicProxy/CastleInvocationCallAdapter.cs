@@ -10,7 +10,9 @@ namespace FakeItEasy.Creation.CastleDynamicProxy
     /// <summary>
     /// An adapter that adapts an <see cref="IInvocation" /> to a <see cref="IFakeObjectCall" />.
     /// </summary>
+#if FEATURE_BINARY_SERIALIZATION
     [Serializable]
+#endif
     internal class CastleInvocationCallAdapter
         : IInterceptedFakeObjectCall, ICompletedFakeObjectCall
     {
@@ -34,28 +36,22 @@ namespace FakeItEasy.Creation.CastleDynamicProxy
         /// <summary>
         /// Gets the value set to be returned from the call.
         /// </summary>
-        public object ReturnValue
-        {
-            get { return this.invocation.ReturnValue; }
-        }
+        public object ReturnValue => this.invocation.ReturnValue;
 
         /// <summary>
         /// Gets the method that's called.
         /// </summary>
-        public MethodInfo Method { get; private set; }
+        public MethodInfo Method { get; }
 
         /// <summary>
         /// Gets the arguments used in the call.
         /// </summary>
-        public ArgumentCollection Arguments { get; private set; }
+        public ArgumentCollection Arguments { get; }
 
         /// <summary>
         /// Gets the faked object the call is performed on.
         /// </summary>
-        public object FakedObject
-        {
-            get { return this.invocation.Proxy; }
-        }
+        public object FakedObject => this.invocation.Proxy;
 
         /// <summary>
         /// Freezes the call so that it can no longer be modified.

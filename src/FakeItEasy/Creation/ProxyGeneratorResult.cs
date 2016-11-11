@@ -19,7 +19,7 @@ namespace FakeItEasy.Creation
         /// </param>
         public ProxyGeneratorResult(string reasonForFailure)
         {
-            Guard.AgainstNull(reasonForFailure, "reasonForFailure");
+            Guard.AgainstNull(reasonForFailure, nameof(reasonForFailure));
 
             this.ReasonForFailure = reasonForFailure;
         }
@@ -37,8 +37,8 @@ namespace FakeItEasy.Creation
         /// </param>
         public ProxyGeneratorResult(string reasonForFailure, Exception exception)
         {
-            Guard.AgainstNull(reasonForFailure, "reasonForFailure");
-            Guard.AgainstNull(exception, "exception");
+            Guard.AgainstNull(reasonForFailure, nameof(reasonForFailure));
+            Guard.AgainstNull(exception, nameof(exception));
 
             if (exception is TargetInvocationException && exception.InnerException != null)
             {
@@ -66,7 +66,7 @@ namespace FakeItEasy.Creation
         /// </param>
         public ProxyGeneratorResult(object generatedProxy)
         {
-            Guard.AgainstNull(generatedProxy, "generatedProxy");
+            Guard.AgainstNull(generatedProxy, nameof(generatedProxy));
 
             this.ProxyWasSuccessfullyGenerated = true;
             this.GeneratedProxy = generatedProxy;
@@ -75,16 +75,16 @@ namespace FakeItEasy.Creation
         /// <summary>
         /// Gets a value indicating whether the proxy was successfully created.
         /// </summary>
-        public bool ProxyWasSuccessfullyGenerated { get; private set; }
+        public bool ProxyWasSuccessfullyGenerated { get; }
 
         /// <summary>
         /// Gets the generated proxy when it was successfully created.
         /// </summary>
-        public object GeneratedProxy { get; private set; }
+        public object GeneratedProxy { get; }
 
         /// <summary>
         /// Gets the reason for failure when the generation was not successful.
         /// </summary>
-        public string ReasonForFailure { get; private set; }
+        public string ReasonForFailure { get; }
     }
 }

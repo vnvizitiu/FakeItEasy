@@ -94,6 +94,7 @@ namespace FakeItEasy
         public static FakeItEasy.Configuration.IPropertySetterAnyValueConfiguration<TValue> CallToSet<TValue>(System.Linq.Expressions.Expression<System.Func<TValue>> propertySpecification) { }
         public static System.Collections.Generic.IList<T> CollectionOfDummy<T>(int numberOfDummies) { }
         public static System.Collections.Generic.IList<T> CollectionOfFake<T>(int numberOfFakes) { }
+        public static System.Collections.Generic.IList<T> CollectionOfFake<T>(int numberOfFakes, System.Action<FakeItEasy.Creation.IFakeOptions<T>> optionsBuilder) { }
         public static T Dummy<T>() { }
         public static T Fake<T>() { }
         public static T Fake<T>(System.Action<FakeItEasy.Creation.IFakeOptions<T>> optionsBuilder) { }
@@ -380,6 +381,7 @@ namespace FakeItEasy.Configuration
     public interface IAfterCallSpecifiedWithOutAndRefParametersConfiguration : FakeItEasy.Configuration.IAfterCallSpecifiedConfiguration, FakeItEasy.Configuration.IOutAndRefParametersConfiguration, FakeItEasy.Configuration.IRepeatConfiguration, FakeItEasy.IHideObjectMembers { }
     public interface IAnyCallConfigurationWithNoReturnTypeSpecified : FakeItEasy.Configuration.IArgumentValidationConfiguration<FakeItEasy.Configuration.IVoidConfiguration>, FakeItEasy.Configuration.IAssertConfiguration, FakeItEasy.Configuration.ICallbackConfiguration<FakeItEasy.Configuration.IVoidConfiguration>, FakeItEasy.Configuration.ICallBaseConfiguration, FakeItEasy.Configuration.IDoNothingConfiguration, FakeItEasy.Configuration.IExceptionThrowerConfiguration, FakeItEasy.Configuration.IOutAndRefParametersConfiguration, FakeItEasy.Configuration.IVoidArgumentValidationConfiguration, FakeItEasy.Configuration.IVoidConfiguration, FakeItEasy.Configuration.IWhereConfiguration<FakeItEasy.Configuration.IAnyCallConfigurationWithNoReturnTypeSpecified>, FakeItEasy.IHideObjectMembers
     {
+        FakeItEasy.Configuration.IAnyCallConfigurationWithReturnTypeSpecified<object> WithNonVoidReturnType();
         FakeItEasy.Configuration.IAnyCallConfigurationWithReturnTypeSpecified<TMember> WithReturnType<TMember>();
     }
     public interface IAnyCallConfigurationWithReturnTypeSpecified<T> : FakeItEasy.Configuration.IArgumentValidationConfiguration<FakeItEasy.Configuration.IReturnValueConfiguration<T>>, FakeItEasy.Configuration.IAssertConfiguration, FakeItEasy.Configuration.ICallbackConfiguration<FakeItEasy.Configuration.IReturnValueConfiguration<T>>, FakeItEasy.Configuration.ICallBaseConfiguration, FakeItEasy.Configuration.IExceptionThrowerConfiguration, FakeItEasy.Configuration.IReturnValueArgumentValidationConfiguration<T>, FakeItEasy.Configuration.IReturnValueConfiguration<T>, FakeItEasy.Configuration.IWhereConfiguration<FakeItEasy.Configuration.IAnyCallConfigurationWithReturnTypeSpecified<T>>, FakeItEasy.IHideObjectMembers { }
@@ -471,7 +473,7 @@ namespace FakeItEasy.Core
     }
     public class FakeManager : FakeItEasy.Core.IFakeCallProcessor
     {
-        public System.Type FakeObjectType { get; }
+        public virtual System.Type FakeObjectType { get; }
         public virtual object Object { get; }
         public virtual System.Collections.Generic.IEnumerable<FakeItEasy.Core.IFakeObjectCallRule> Rules { get; }
         public void AddInterceptionListener(FakeItEasy.Core.IInterceptionListener listener) { }
@@ -546,6 +548,19 @@ namespace FakeItEasy.Creation
     public interface ITaggable
     {
         object Tag { get; set; }
+    }
+}
+namespace FakeItEasy.Sdk
+{
+    
+    public class static Create
+    {
+        public static System.Collections.Generic.IList<object> CollectionOfDummy(System.Type typeOfDummy, int numberOfDummies) { }
+        public static System.Collections.Generic.IList<object> CollectionOfFake(System.Type typeOfFake, int numberOfFakes) { }
+        public static System.Collections.Generic.IList<object> CollectionOfFake(System.Type typeOfFake, int numberOfFakes, System.Action<FakeItEasy.Creation.IFakeOptions> optionsBuilder) { }
+        public static object Dummy(System.Type typeOfDummy) { }
+        public static object Fake(System.Type typeOfFake) { }
+        public static object Fake(System.Type typeOfFake, System.Action<FakeItEasy.Creation.IFakeOptions> optionsBuilder) { }
     }
 }
 namespace FakeItEasy.SelfInitializedFakes

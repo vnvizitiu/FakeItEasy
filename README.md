@@ -1,10 +1,8 @@
 ![Are you mocking me?](http://fakeiteasy.github.io/img/fakeiteasy_logo_256.png)
 
-[![NuGet version](https://img.shields.io/nuget/v/FakeItEasy.svg?style=flat-square)](https://www.nuget.org/packages/FakeItEasy)
-[![NuGet downloads](https://img.shields.io/nuget/dt/FakeItEasy.svg?style=flat-square)](https://www.nuget.org/packages/FakeItEasy)
-[![Pull requests](http://issuestats.com/github/FakeItEasy/FakeItEasy/badge/pr?style=flat-square)](http://issuestats.com/github/FakeItEasy/FakeItEasy)
-[![Issues](http://issuestats.com/github/FakeItEasy/FakeItEasy/badge/issue?style=flat-square)](http://issuestats.com/github/FakeItEasy/FakeItEasy)
-[![TeamCity CodeBetter](https://img.shields.io/teamcity/codebetter/bt929.svg?style=flat-square)](http://teamcity.codebetter.com/viewType.html?buildTypeId=bt929)
+[![NuGet version](https://img.shields.io/nuget/v/FakeItEasy.svg?style=flat)](https://www.nuget.org/packages/FakeItEasy)
+[![Build status](https://ci.appveyor.com/api/projects/status/tmxobysgprwpecsb/branch/master?svg=true)](https://ci.appveyor.com/project/FakeItEasy/fakeiteasy/branch/master)
+[![Source Browser](https://img.shields.io/badge/Browse-Source-green.svg)](http://sourcebrowser.io/Browse/FakeItEasy/FakeItEasy)
 
 A .Net dynamic fake framework for creating all types of fake objects, mocks, stubs etc.
 
@@ -19,7 +17,10 @@ A .Net dynamic fake framework for creating all types of fake objects, mocks, stu
 * [Quickstart](http://fakeiteasy.readthedocs.io/en/stable/quickstart/)
 * [Documentation](http://fakeiteasy.readthedocs.io/en/stable/)
 * [Chat](https://gitter.im/FakeItEasy/FakeItEasy)
-* [Package](https://nuget.org/packages/FakeItEasy "FakeItEasy on NuGet")
+* NuGet packages:
+    * [Official releases on NuGet.org](https://www.nuget.org/profiles/FakeItEasy "FakeItEasy's packages on NuGet.org")
+    * Pre-release builds targeting .NET Standard 1.6/.NET Core 1.0 are on AppVeyor:<br>
+      https://ci.appveyor.com/nuget/FakeItEasy
 
 -
-FakeItEasy logo designed by Vanja Pakaski.
+FakeItEasy logo designed by [Vanja Pakaski](https://github.com/vanpak).

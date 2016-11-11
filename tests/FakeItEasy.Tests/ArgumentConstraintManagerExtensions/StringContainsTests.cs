@@ -1,25 +1,45 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
     using System.Collections.Generic;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
-    internal class StringContainsTests
+    public class StringContainsTests
         : ArgumentConstraintTestBase<string>
     {
-        protected override IEnumerable<object> InvalidValues
+        protected override string ExpectedDescription => "string that contains \"bar\"";
+
+        public static IEnumerable<object[]> InvalidValues()
         {
-            get { return new object[] { "foo", "baz", "biz", string.Empty, null, "lorem ipsum" }; }
+            return TestCases.FromObject(
+                "foo",
+                "baz",
+                "biz",
+                string.Empty,
+                null,
+                "lorem ipsum");
         }
 
-        protected override IEnumerable<object> ValidValues
+        public static IEnumerable<object[]> ValidValues()
         {
-            get { return new object[] { "bar", "barcode", "foo bar", "unbareable ;-)" }; }
+            return TestCases.FromObject(
+                "bar",
+                "barcode",
+                "foo bar",
+                "unbareable ;-)");
         }
 
-        protected override string ExpectedDescription
+        [Theory]
+        [MemberData(nameof(InvalidValues))]
+        public override void IsValid_should_return_false_for_invalid_values(object invalidValue)
         {
-            get { return "string that contains \"bar\""; }
+            base.IsValid_should_return_false_for_invalid_values(invalidValue);
+        }
+
+        [Theory]
+        [MemberData(nameof(ValidValues))]
+        public override void IsValid_should_return_true_for_valid_values(object validValue)
+        {
+            base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
         protected override void CreateConstraint(IArgumentConstraintManager<string> scope)

@@ -6,27 +6,25 @@ namespace FakeItEasy.Tests.Core
     using FakeItEasy.Creation;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
     public class DefaultSutInitializerTests
     {
+        private readonly DefaultSutInitializer sutInitializer;
+
 #pragma warning disable 649
         [Fake]
         private IFakeAndDummyManager fakeManager;
 #pragma warning restore 649
 
-        private DefaultSutInitializer sutInitializer;
-
-        [SetUp]
-        public void Setup()
+        public DefaultSutInitializerTests()
         {
             Fake.InitializeFixture(this);
 
             this.sutInitializer = new DefaultSutInitializer(this.fakeManager);
         }
 
-        [Test]
+        [Fact]
         public void Should_produce_sut_with_fakes_for_all_dependencies()
         {
             // Arrange
@@ -42,7 +40,7 @@ namespace FakeItEasy.Tests.Core
             sut.Dependency.Should().BeAFake();
         }
 
-        [Test]
+        [Fact]
         public void Should_use_same_instance_when_multiple_arguments_are_of_same_type()
         {
             // Arrange
@@ -56,7 +54,7 @@ namespace FakeItEasy.Tests.Core
             sut.FooDependency.Should().BeSameAs(sut.FooDependency2);
         }
 
-        [Test]
+        [Fact]
         public void Should_pass_empty_options_builder_to_fake_manager_for_each_constructor_argument()
         {
             // Arrange
@@ -80,7 +78,7 @@ namespace FakeItEasy.Tests.Core
             A.CallTo(fakeOptions).MustNotHaveHappened();
         }
 
-        [Test]
+        [Fact]
         public void Should_call_callback_with_each_created_fake()
         {
             // Arrange
@@ -119,11 +117,11 @@ namespace FakeItEasy.Tests.Core
                 this.Dependency = dependency;
             }
 
-            public IFoo FooDependency { get; private set; }
+            public IFoo FooDependency { get; }
 
-            public IFoo FooDependency2 { get; private set; }
+            public IFoo FooDependency2 { get; }
 
-            public object Dependency { get; private set; }
+            public object Dependency { get; }
         }
     }
 }

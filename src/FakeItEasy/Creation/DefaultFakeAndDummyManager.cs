@@ -2,6 +2,9 @@ namespace FakeItEasy.Creation
 {
     using System;
     using System.Collections.Generic;
+#if FEATURE_NETCORE_REFLECTION
+    using System.Reflection;
+#endif
     using System.Reflection.Emit;
     using FakeItEasy.Core;
 
@@ -45,12 +48,6 @@ namespace FakeItEasy.Creation
             return this.session.TryResolveDummyValue(typeOfDummy, out result);
         }
 
-        public bool TryCreateFake(Type typeOfFake, IProxyOptions options, out object result)
-        {
-            result = this.fakeCreator.CreateFake(typeOfFake, options, this.session, throwOnFailure: false);
-            return result != null;
-        }
-
         private static IFakeOptions CreateFakeOptions(Type typeOfFake, ProxyOptions proxyOptions)
         {
             var optionsConstructor = typeof(FakeOptions<>)
@@ -89,7 +86,7 @@ namespace FakeItEasy.Creation
             public override IFakeOptions<T> WithAdditionalAttributes(
                 IEnumerable<CustomAttributeBuilder> customAttributeBuilders)
             {
-                Guard.AgainstNull(customAttributeBuilders, "customAttributeBuilders");
+                Guard.AgainstNull(customAttributeBuilders, nameof(customAttributeBuilders));
 
                 foreach (var customAttributeBuilder in customAttributeBuilders)
                 {
@@ -101,7 +98,7 @@ namespace FakeItEasy.Creation
 
             public override IFakeOptionsForWrappers<T> Wrapping(T wrappedInstance)
             {
-                Guard.AgainstNull(wrappedInstance, "wrappedInstance");
+                Guard.AgainstNull(wrappedInstance, nameof(wrappedInstance));
 
                 var wrapper = new FakeWrapperConfigurator<T>(this, wrappedInstance);
                 this.ConfigureFake(fake => wrapper.ConfigureFakeToWrap(fake));

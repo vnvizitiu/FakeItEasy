@@ -10,12 +10,9 @@ namespace FakeItEasy.Expressions.ArgumentConstraints
             this.ExpectedValue = expectedValue;
         }
 
-        public object ExpectedValue { get; private set; }
+        public object ExpectedValue { get; }
 
-        public string ConstraintDescription
-        {
-            get { return this.ToString(); }
-        }
+        public string ConstraintDescription => this.ToString();
 
         public bool IsValid(object argument)
         {

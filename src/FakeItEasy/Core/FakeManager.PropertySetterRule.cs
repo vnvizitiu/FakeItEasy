@@ -6,39 +6,43 @@ namespace FakeItEasy.Core
     /// <content>Property setter rule.</content>
     public partial class FakeManager
     {
+#if FEATURE_BINARY_SERIALIZATION
         [Serializable]
+#endif
         private class PropertySetterRule
             : IFakeObjectCallRule
         {
-            public FakeManager FakeManager { get; set; }
+            private readonly FakeManager fakeManager;
 
-            public int? NumberOfTimesToCall
+            public PropertySetterRule(FakeManager fakeManager)
             {
-                get { return null; }
+                this.fakeManager = fakeManager;
             }
+
+            public int? NumberOfTimesToCall => null;
 
             public bool IsApplicableTo(IFakeObjectCall fakeObjectCall)
             {
-                Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+                Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
                 return PropertyBehaviorRule.IsPropertySetter(fakeObjectCall.Method);
             }
 
             public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
             {
-                Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+                Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
                 var newRule = new CallRuleMetadata
                                   {
                                       CalledNumberOfTimes = 1,
-                                      Rule = new PropertyBehaviorRule(fakeObjectCall.Method, this.FakeManager)
+                                      Rule = new PropertyBehaviorRule(fakeObjectCall.Method, this.fakeManager)
                                                  {
                                                      Indices = fakeObjectCall.Arguments.Take(fakeObjectCall.Arguments.Count - 1).ToArray(),
                                                      Value = fakeObjectCall.Arguments.Last()
                                                  }
                                   };
 
-                this.FakeManager.allUserRulesField.AddFirst(newRule);
+                this.fakeManager.AllUserRules.AddFirst(newRule);
             }
         }
     }

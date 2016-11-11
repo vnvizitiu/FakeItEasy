@@ -4,6 +4,9 @@ namespace FakeItEasy.Core
     using System.Collections.Concurrent;
     using System.Collections.Generic;
     using System.Linq;
+#if FEATURE_NETCORE_REFLECTION
+    using System.Reflection;
+#endif
 
     internal class ArgumentValueFormatter
     {
@@ -43,13 +46,13 @@ namespace FakeItEasy.Core
                 return 0;
             }
 
-            if (comparedType.IsInterface && knownType.GetInterfaces().Contains(comparedType))
+            if (comparedType.GetTypeInfo().IsInterface && knownType.GetInterfaces().Contains(comparedType))
             {
                 return 1;
             }
 
             var distance = 2;
-            var currentType = knownType.BaseType;
+            var currentType = knownType.GetTypeInfo().BaseType;
             while (currentType != null)
             {
                 if (currentType == comparedType)
@@ -58,7 +61,7 @@ namespace FakeItEasy.Core
                 }
 
                 distance++;
-                currentType = currentType.BaseType;
+                currentType = currentType.GetTypeInfo().BaseType;
             }
 
             return int.MaxValue;
@@ -88,11 +91,11 @@ namespace FakeItEasy.Core
                 this.distanceFromKnownType = distanceFromKnownType;
             }
 
-            public IArgumentValueFormatter Formatter { get; private set; }
+            public IArgumentValueFormatter Formatter { get; }
 
             public int CompareTo(RangedFormatter other)
             {
-                Guard.AgainstNull(other, "other");
+                Guard.AgainstNull(other, nameof(other));
 
                 if (other.distanceFromKnownType == this.distanceFromKnownType)
                 {
@@ -106,14 +109,11 @@ namespace FakeItEasy.Core
         private class DefaultFormatter
             : ArgumentValueFormatter<object>
         {
-            public override Priority Priority
-            {
-                get { return Priority.Internal; }
-            }
+            public override Priority Priority => Priority.Internal;
 
             protected override string GetStringValue(object argumentValue)
             {
-                Guard.AgainstNull(argumentValue, "argumentValue");
+                Guard.AgainstNull(argumentValue, nameof(argumentValue));
 
                 return argumentValue.ToString();
             }
@@ -122,14 +122,11 @@ namespace FakeItEasy.Core
         private class DefaultStringFormatter
             : ArgumentValueFormatter<string>
         {
-            public override Priority Priority
-            {
-                get { return Priority.Internal; }
-            }
+            public override Priority Priority => Priority.Internal;
 
             protected override string GetStringValue(string argumentValue)
             {
-                Guard.AgainstNull(argumentValue, "argumentValue");
+                Guard.AgainstNull(argumentValue, nameof(argumentValue));
 
                 if (argumentValue.Length == 0)
                 {

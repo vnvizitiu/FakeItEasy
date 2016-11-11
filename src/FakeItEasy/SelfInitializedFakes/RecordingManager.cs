@@ -25,14 +25,14 @@ namespace FakeItEasy.SelfInitializedFakes
         /// <param name="storage">The storage.</param>
         public RecordingManager(ICallStorage storage)
         {
-            Guard.AgainstNull(storage, "storage");
+            Guard.AgainstNull(storage, nameof(storage));
 
             this.storage = storage;
 
-            var recordedCalls = storage.Load();
+            var callsFromStorage = storage.Load();
 
-            this.IsRecording = recordedCalls == null;
-            this.callQueue = CreateCallsList(recordedCalls);
+            this.IsRecording = callsFromStorage == null;
+            this.callQueue = CreateCallsList(callsFromStorage);
             this.recordedCalls = new List<CallDataMetadata>(this.callQueue);
         }
 
@@ -48,7 +48,7 @@ namespace FakeItEasy.SelfInitializedFakes
         /// Gets a value indicating whether the recorder is currently recording.
         /// </summary>
         /// <value></value>
-        public bool IsRecording { get; private set; }
+        public bool IsRecording { get; }
 
         /// <summary>
         /// Applies the call if the call has been recorded.
@@ -56,7 +56,7 @@ namespace FakeItEasy.SelfInitializedFakes
         /// <param name="fakeObjectCall">The call to apply to from recording.</param>
         public void ApplyNext(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
             this.AssertThatCallQueueIsNotEmpty();
 
@@ -75,7 +75,7 @@ namespace FakeItEasy.SelfInitializedFakes
         /// <param name="fakeObjectCall">The call to record.</param>
         public virtual void RecordCall(ICompletedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
             var callData = new CallData(fakeObjectCall.Method, GetOutputArgumentsForCall(fakeObjectCall), fakeObjectCall.ReturnValue);
             this.recordedCalls.Add(new CallDataMetadata { HasBeenApplied = true, RecordedCall = callData });

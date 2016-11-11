@@ -2,7 +2,7 @@ namespace FakeItEasy
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
-    using Creation;
+    using FakeItEasy.Creation;
 
     /// <summary>
     /// A base implementation for classes that can build options for fakes of type <typeparamref name="TFake"/>.
@@ -15,10 +15,7 @@ namespace FakeItEasy
         /// the same type are registered, the one with the highest priority value is used.
         /// </summary>
         /// <remarks>The default implementation returns <see cref="FakeItEasy.Priority.Default"/>.</remarks>
-        public virtual Priority Priority
-        {
-            get { return Priority.Default; }
-        }
+        public virtual Priority Priority => Priority.Default;
 
         /// <summary>
         /// Whether or not this object can build options for a Fake of type <paramref name="type"/>.

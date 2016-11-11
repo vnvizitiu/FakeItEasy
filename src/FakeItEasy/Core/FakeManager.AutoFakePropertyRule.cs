@@ -6,31 +6,35 @@ namespace FakeItEasy.Core
     /// <content>Auto fake property rule.</content>
     public partial class FakeManager
     {
+#if FEATURE_BINARY_SERIALIZATION
         [Serializable]
+#endif
         private class AutoFakePropertyRule
             : IFakeObjectCallRule
         {
-            public FakeManager FakeManager { private get; set; }
+            private readonly FakeManager fakeManager;
 
-            public int? NumberOfTimesToCall
+            public AutoFakePropertyRule(FakeManager fakeManager)
             {
-                get { return null; }
+                this.fakeManager = fakeManager;
             }
+
+            public int? NumberOfTimesToCall => null;
 
             public bool IsApplicableTo(IFakeObjectCall fakeObjectCall)
             {
-                Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+                Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
                 return PropertyBehaviorRule.IsPropertyGetter(fakeObjectCall.Method);
             }
 
             public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
             {
-                Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+                Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
                 var newRule = new CallRuleMetadata
                                   {
-                                      Rule = new PropertyBehaviorRule(fakeObjectCall.Method, FakeManager)
+                                      Rule = new PropertyBehaviorRule(fakeObjectCall.Method, this.fakeManager)
                                       {
                                           Value = DefaultReturnValue(fakeObjectCall),
                                           Indices = fakeObjectCall.Arguments.ToArray(),
@@ -38,7 +42,7 @@ namespace FakeItEasy.Core
                                       CalledNumberOfTimes = 1
                                   };
 
-                this.FakeManager.allUserRulesField.AddFirst(newRule);
+                this.fakeManager.AllUserRules.AddFirst(newRule);
                 newRule.Rule.Apply(fakeObjectCall);
             }
 

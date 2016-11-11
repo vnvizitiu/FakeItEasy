@@ -27,10 +27,7 @@ namespace FakeItEasy.Core
 
             public object[] Indices { get; set; }
 
-            public int? NumberOfTimesToCall
-            {
-                get { return null; }
-            }
+            public int? NumberOfTimesToCall => null;
 
             public static bool IsPropertySetter(MethodInfo method)
             {
@@ -49,7 +46,7 @@ namespace FakeItEasy.Core
 
             public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
             {
-                Guard.AgainstNull(fakeObjectCall, "fakeObjectCall");
+                Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
 
                 if (this.IsPropertyGetter(fakeObjectCall))
                 {

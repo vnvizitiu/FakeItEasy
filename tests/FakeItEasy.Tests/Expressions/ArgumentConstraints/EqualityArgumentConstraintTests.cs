@@ -4,40 +4,55 @@ namespace FakeItEasy.Tests.ExpressionsConstraints
     using System.Collections.Generic;
     using FakeItEasy.Expressions.ArgumentConstraints;
     using FluentAssertions;
-    using NUnit.Framework;
+    using Xunit;
 
-    [TestFixture]
-    internal class EqualityArgumentConstraintTests
+    public class EqualityArgumentConstraintTests
         : ArgumentConstraintTestBase
     {
-        protected override IEnumerable<object> InvalidValues
-        {
-            get { return new[] { null, new object(), Guid.NewGuid(), "FOO", " foo " }; }
-        }
-
-        protected override IEnumerable<object> ValidValues
-        {
-            get { return new object[] { 1 }; }
-        }
-
-        protected override string ExpectedDescription
-        {
-            get { return "1"; }
-        }
-
-        [SetUp]
-        public void Setup()
+        public EqualityArgumentConstraintTests()
         {
             this.ConstraintField = new EqualityArgumentConstraint(1);
         }
 
-        [Test]
+        protected override string ExpectedDescription => "1";
+
+        public static IEnumerable<object[]> InvalidValues()
+        {
+            return TestCases.FromObject(
+                null,
+                new object(),
+                Guid.NewGuid(),
+                "FOO",
+                " foo ");
+        }
+
+        public static IEnumerable<object[]> ValidValues()
+        {
+            return TestCases.FromObject(
+                1);
+        }
+
+        [Theory]
+        [MemberData(nameof(InvalidValues))]
+        public override void IsValid_should_return_false_for_invalid_values(object invalidValue)
+        {
+            base.IsValid_should_return_false_for_invalid_values(invalidValue);
+        }
+
+        [Theory]
+        [MemberData(nameof(ValidValues))]
+        public override void IsValid_should_return_true_for_valid_values(object validValue)
+        {
+            base.IsValid_should_return_true_for_valid_values(validValue);
+        }
+
+        [Fact]
         public override void Constraint_should_provide_correct_description()
         {
             this.ConstraintField.ToString().Should().Be("1");
         }
 
-        [Test]
+        [Fact]
         public void ToString_should_return_NULL_when_expected_value_is_null()
         {
             var validator = new EqualityArgumentConstraint(null);
@@ -45,7 +60,7 @@ namespace FakeItEasy.Tests.ExpressionsConstraints
             validator.ToString().Should().Be("<NULL>");
         }
 
-        [Test]
+        [Fact]
         public void ToString_should_put_accents_when_expected_value_is_string()
         {
             var validator = new EqualityArgumentConstraint("foo");

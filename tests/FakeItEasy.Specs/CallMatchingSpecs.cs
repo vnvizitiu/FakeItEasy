@@ -7,6 +7,7 @@ namespace FakeItEasy.Specs
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xbehave;
+    using Xunit;
 
     public static class CallMatchingSpecs
     {
@@ -32,13 +33,11 @@ namespace FakeItEasy.Specs
 
         public interface IHaveARefParameter
         {
-            [SuppressMessage("Microsoft.Design", "CA1045:DoNotPassTypesByReference", MessageId = "0#", Justification = "Required for testing.")]
             bool CheckYourReferences(ref string refString);
         }
 
         public interface IHaveAnOutParameter
         {
-            [SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "0#", Justification = "Required for testing.")]
             bool Validate([Out] string value);
         }
 
