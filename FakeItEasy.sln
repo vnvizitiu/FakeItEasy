@@ -1,58 +1,43 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
-MinimumVisualStudioVersion = 14.0.0.0
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33213.308
+MinimumVisualStudioVersion = 15.0.0.0
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A6A7B553-5359-4FB9-B19C-8A23004F49DB}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 		.gitattributes = .gitattributes
 		.gitignore = .gitignore
+		.globalconfig = .globalconfig
 		.mailmap = .mailmap
 		build.cmd = build.cmd
+		build.ps1 = build.ps1
+		build.sh = build.sh
 		CONTRIBUTING.md = CONTRIBUTING.md
-		FakeItEasy.Dictionary.xml = FakeItEasy.Dictionary.xml
-		FakeItEasy.ruleset = FakeItEasy.ruleset
-		FakeItEasy.snk = FakeItEasy.snk
-		Gemfile = Gemfile
-		Gemfile.lock = Gemfile.lock
-		cacert.pem = cacert.pem
+		Directory.Build.props = Directory.Build.props
 		how_to_build.md = how_to_build.md
 		License.txt = License.txt
 		mkdocs.yml = mkdocs.yml
-		rakefile.rb = rakefile.rb
 		README.md = README.md
-		Settings.StyleCop = Settings.StyleCop
+		requirements.in = requirements.in
+		requirements.txt = requirements.txt
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{59466C4D-C407-4DD9-B77B-D99162B9FC7C}"
 	ProjectSection(SolutionItems) = preProject
 		src\CommonAssemblyInfo.cs = src\CommonAssemblyInfo.cs
-		src\ILMerge.Internalize.Exclude.txt = src\ILMerge.Internalize.Exclude.txt
+		src\Directory.Build.props = src\Directory.Build.props
+		src\FakeItEasy.Dictionary.xml = src\FakeItEasy.Dictionary.xml
+		src\FakeItEasy.snk = src\FakeItEasy.snk
 	EndProjectSection
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{4B581366-50F5-42E9-87A5-BA7DC4F6E330}"
-	ProjectSection(SolutionItems) = preProject
-		.nuget\NuGet.Config = .nuget\NuGet.Config
-		.nuget\nuget.exe = .nuget\nuget.exe
-		.nuget\packages.config = .nuget\packages.config
-	EndProjectSection
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Tests", "tests\FakeItEasy.Tests\FakeItEasy.Tests.csproj", "{0E26272D-045A-47C2-8928-BD9B980115D5}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.Examples", "samples\FakeItEasy.Examples\FakeItEasy.Examples.csproj", "{1ED2F1A2-40E3-498C-B13F-AF066EACF58F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.IntegrationTests", "tests\FakeItEasy.IntegrationTests\FakeItEasy.IntegrationTests.csproj", "{C291B61B-0729-4DC5-B8E4-147A8E3F801F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.Tests", "tests\FakeItEasy.Tests\FakeItEasy.Tests.csproj", "{0E26272D-045A-47C2-8928-BD9B980115D5}"
+Project("{778DAE3C-4631-46EA-AA77-85C1314464D9}") = "FakeItEasy.IntegrationTests.VB", "tests\FakeItEasy.IntegrationTests.VB\FakeItEasy.IntegrationTests.VB.vbproj", "{69A27B0A-710B-4CEC-B159-56E34C788665}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.IntegrationTests", "tests\FakeItEasy.IntegrationTests\FakeItEasy.IntegrationTests.csproj", "{C291B61B-0729-4DC5-B8E4-147A8E3F801F}"
-	ProjectSection(ProjectDependencies) = postProject
-		{30396678-D653-4C67-A507-1749424A24CD} = {30396678-D653-4C67-A507-1749424A24CD}
-	EndProjectSection
-EndProject
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FakeItEasy.IntegrationTests.VB", "tests\FakeItEasy.IntegrationTests.VB\FakeItEasy.IntegrationTests.VB.vbproj", "{69A27B0A-710B-4CEC-B159-56E34C788665}"
-EndProject
-Project("{F184B08F-C81C-45F6-A57F-5ABD9991F28F}") = "FakeItEasy.Examples.VB", "samples\FakeItEasy.Examples.VB\FakeItEasy.Examples.VB.vbproj", "{193C944B-733B-4E01-87A3-73F7AB40CDC7}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.Specs", "tests\FakeItEasy.Specs\FakeItEasy.Specs.csproj", "{FA539A2D-98DC-4300-9A2C-EC6FE38A7392}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.IntegrationTests.External", "tests\FakeItEasy.IntegrationTests.External\FakeItEasy.IntegrationTests.External.csproj", "{30396678-D653-4C67-A507-1749424A24CD}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Specs", "tests\FakeItEasy.Specs\FakeItEasy.Specs.csproj", "{FA539A2D-98DC-4300-9A2C-EC6FE38A7392}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Unit", "Unit", "{DC5EAE30-96E3-4D38-B3C5-33E587C9FB76}"
 EndProject
@@ -62,24 +47,25 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Specs", "Specs", "{575A3C3B
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}"
 	ProjectSection(SolutionItems) = preProject
+		tests\.editorconfig = tests\.editorconfig
+		tests\Directory.Build.props = tests\Directory.Build.props
 		tests\FakeItEasy.Dictionary.Tests.xml = tests\FakeItEasy.Dictionary.Tests.xml
-		tests\FakeItEasy.Tests.ruleset = tests\FakeItEasy.Tests.ruleset
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "samples", "samples", "{2EEDF4EB-ED06-4370-9C0A-59502DF1B7F6}"
-	ProjectSection(SolutionItems) = preProject
-		samples\FakeItEasy.Examples.ruleset = samples\FakeItEasy.Examples.ruleset
 	EndProjectSection
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{072853A5-377B-47C4-8644-AF1F4FD669E2}"
 	ProjectSection(SolutionItems) = preProject
+		docs\advanced-usage.md = docs\advanced-usage.md
 		docs\analyzer.md = docs\analyzer.md
 		docs\argument-constraints.md = docs\argument-constraints.md
 		docs\assertion.md = docs\assertion.md
 		docs\assigning-out-and-ref-parameters.md = docs\assigning-out-and-ref-parameters.md
 		docs\bootstrapper.md = docs\bootstrapper.md
 		docs\calling-base-methods.md = docs\calling-base-methods.md
+		docs\calling-wrapped-methods.md = docs\calling-wrapped-methods.md
+		docs\capturing-arguments.md = docs\capturing-arguments.md
+		docs\changing-behavior-between-calls.md = docs\changing-behavior-between-calls.md
 		docs\creating-fakes.md = docs\creating-fakes.md
+		docs\custom-argument-equality.md = docs\custom-argument-equality.md
 		docs\custom-dummy-creation.md = docs\custom-dummy-creation.md
 		docs\default-fake-behavior.md = docs\default-fake-behavior.md
 		docs\doing-nothing.md = docs\doing-nothing.md
@@ -98,7 +84,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "docs", "docs", "{072853A5-3
 		docs\raising-events.md = docs\raising-events.md
 		docs\read-write-property-behavior.md = docs\read-write-property-behavior.md
 		docs\scanning-for-extension-points.md = docs\scanning-for-extension-points.md
-		docs\snippets-for-fakeiteasy-in-sidewaffle.md = docs\snippets-for-fakeiteasy-in-sidewaffle.md
+		docs\source-stepping.md = docs\source-stepping.md
 		docs\specifying-a-call-to-configure.md = docs\specifying-a-call-to-configure.md
 		docs\specifying-return-values.md = docs\specifying-return-values.md
 		docs\strict-fakes.md = docs\strict-fakes.md
@@ -112,15 +98,65 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "css", "css", "{5A081DFC-026
 		docs\css\extra-highlight.css = docs\css\extra-highlight.css
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.Analyzer", "src\FakeItEasy.Analyzer\FakeItEasy.Analyzer.csproj", "{F97E3B4B-080D-414A-9F00-EE20F4451E36}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.Analyzer.Tests", "tests\FakeItEasy.Analyzer.Tests\FakeItEasy.Analyzer.Tests.csproj", "{38F3191B-1CE0-4EE0-930F-794A2F2F4CDB}"
-EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Approval", "Approval", "{9D4A41F1-D444-4244-AAAC-F610D9977B2F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy.Tests.Approval", "tests\FakeItEasy.Tests.Approval\FakeItEasy.Tests.Approval.csproj", "{42A92357-2A87-4B87-A591-CA78B6CE4461}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Tests.Approval", "tests\FakeItEasy.Tests.Approval\FakeItEasy.Tests.Approval.csproj", "{42A92357-2A87-4B87-A591-CA78B6CE4461}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "FakeItEasy", "src\FakeItEasy\FakeItEasy.csproj", "{74165807-676F-4464-B607-8770C13E8991}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy", "src\FakeItEasy\FakeItEasy.csproj", "{74165807-676F-4464-B607-8770C13E8991}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tools", "tools", "{9D99B251-FB4F-49BF-8405-F6E0DE46EB32}"
+	ProjectSection(SolutionItems) = preProject
+		tools\deploy.cmd = tools\deploy.cmd
+		tools\prepare_release.cmd = tools\prepare_release.cmd
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Build", "tools\FakeItEasy.Build\FakeItEasy.Build.csproj", "{81779103-4CA9-4177-B78A-A435FC37DADC}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.PrepareRelease", "tools-shared\FakeItEasy.PrepareRelease\FakeItEasy.PrepareRelease.csproj", "{0E2ED1CD-C7ED-4641-9482-C4BBBA58B623}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Deploy", "tools-shared\FakeItEasy.Deploy\FakeItEasy.Deploy.csproj", "{5F4FC5FA-E2FA-456D-813F-6057B7CE7FF0}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Extensions.ValueTask", "src\FakeItEasy.Extensions.ValueTask\FakeItEasy.Extensions.ValueTask.csproj", "{17B22C7C-9ECB-4D05-A238-48B40DDA06E8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Tests.TestHelpers", "tests\FakeItEasy.Tests.TestHelpers\FakeItEasy.Tests.TestHelpers.csproj", "{458FBDA4-91F9-4A69-BFBC-5AC3D85D4A03}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Tests.ExtensionPoints", "tests\FakeItEasy.Tests.ExtensionPoints\FakeItEasy.Tests.ExtensionPoints.csproj", "{55451191-0521-41E1-BCCF-6D135D646589}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "shared", "shared", "{101E0992-8233-42C8-9CAF-FEC799BF5DDB}"
+	ProjectSection(SolutionItems) = preProject
+		tools-shared\.editorconfig = tools-shared\.editorconfig
+		tools-shared\.githubtoken = tools-shared\.githubtoken
+		tools-shared\.gitignore = tools-shared\.gitignore
+		tools-shared\Directory.Build.props = tools-shared\Directory.Build.props
+		tools-shared\README.md = tools-shared\README.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Recipes", "Recipes", "{8733C91C-38B3-4105-88A3-11AD82CB78CD}"
+	ProjectSection(SolutionItems) = preProject
+		docs\Recipes\faking-http-client.md = docs\Recipes\faking-http-client.md
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "recipes", "recipes", "{FFFFB03D-8D02-46C5-BD12-EC176C0E056C}"
+	ProjectSection(SolutionItems) = preProject
+		recipes\.editorconfig = recipes\.editorconfig
+		recipes\Directory.Build.props = recipes\Directory.Build.props
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "FakeItEasy.Recipes.CSharp", "recipes\FakeItEasy.Recipes.CSharp\FakeItEasy.Recipes.CSharp.csproj", "{CDA19B53-4E12-456A-ADA7-06654C161D64}"
+EndProject
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "FakeItEasy.Tests.TestHelpers.FSharp", "tests\FakeItEasy.Tests.TestHelpers.FSharp\FakeItEasy.Tests.TestHelpers.FSharp.fsproj", "{469F0214-2840-446D-A418-7539BDD2DEC0}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "profiles", "profiles", "{427B2879-0943-4BF7-97BB-E99BC91D630A}"
+	ProjectSection(SolutionItems) = preProject
+		profiles\full.props = profiles\full.props
+		profiles\net462.props = profiles\net462.props
+		profiles\net6.0.props = profiles\net6.0.props
+		profiles\net8.0.props = profiles\net8.0.props
+		profiles\netstandard2.0.props = profiles\netstandard2.0.props
+		profiles\netstandard2.1.props = profiles\netstandard2.1.props
+	EndProjectSection
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CodeGen", "tools\CodeGen\CodeGen.csproj", "{95F1F48E-D5D7-4B9E-A0CE-FF5EC6C20190}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -128,10 +164,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1ED2F1A2-40E3-498C-B13F-AF066EACF58F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1ED2F1A2-40E3-498C-B13F-AF066EACF58F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1ED2F1A2-40E3-498C-B13F-AF066EACF58F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1ED2F1A2-40E3-498C-B13F-AF066EACF58F}.Release|Any CPU.Build.0 = Release|Any CPU
 		{0E26272D-045A-47C2-8928-BD9B980115D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{0E26272D-045A-47C2-8928-BD9B980115D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{0E26272D-045A-47C2-8928-BD9B980115D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -144,26 +176,10 @@ Global
 		{69A27B0A-710B-4CEC-B159-56E34C788665}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{69A27B0A-710B-4CEC-B159-56E34C788665}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{69A27B0A-710B-4CEC-B159-56E34C788665}.Release|Any CPU.Build.0 = Release|Any CPU
-		{193C944B-733B-4E01-87A3-73F7AB40CDC7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{193C944B-733B-4E01-87A3-73F7AB40CDC7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{193C944B-733B-4E01-87A3-73F7AB40CDC7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{193C944B-733B-4E01-87A3-73F7AB40CDC7}.Release|Any CPU.Build.0 = Release|Any CPU
 		{FA539A2D-98DC-4300-9A2C-EC6FE38A7392}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{FA539A2D-98DC-4300-9A2C-EC6FE38A7392}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FA539A2D-98DC-4300-9A2C-EC6FE38A7392}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FA539A2D-98DC-4300-9A2C-EC6FE38A7392}.Release|Any CPU.Build.0 = Release|Any CPU
-		{30396678-D653-4C67-A507-1749424A24CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{30396678-D653-4C67-A507-1749424A24CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{30396678-D653-4C67-A507-1749424A24CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{30396678-D653-4C67-A507-1749424A24CD}.Release|Any CPU.Build.0 = Release|Any CPU
-		{F97E3B4B-080D-414A-9F00-EE20F4451E36}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{F97E3B4B-080D-414A-9F00-EE20F4451E36}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{F97E3B4B-080D-414A-9F00-EE20F4451E36}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{F97E3B4B-080D-414A-9F00-EE20F4451E36}.Release|Any CPU.Build.0 = Release|Any CPU
-		{38F3191B-1CE0-4EE0-930F-794A2F2F4CDB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{38F3191B-1CE0-4EE0-930F-794A2F2F4CDB}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{38F3191B-1CE0-4EE0-930F-794A2F2F4CDB}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{38F3191B-1CE0-4EE0-930F-794A2F2F4CDB}.Release|Any CPU.Build.0 = Release|Any CPU
 		{42A92357-2A87-4B87-A591-CA78B6CE4461}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{42A92357-2A87-4B87-A591-CA78B6CE4461}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{42A92357-2A87-4B87-A591-CA78B6CE4461}.Release|Any CPU.ActiveCfg = Release|Any CPU
@@ -172,30 +188,66 @@ Global
 		{74165807-676F-4464-B607-8770C13E8991}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{74165807-676F-4464-B607-8770C13E8991}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{74165807-676F-4464-B607-8770C13E8991}.Release|Any CPU.Build.0 = Release|Any CPU
+		{81779103-4CA9-4177-B78A-A435FC37DADC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{81779103-4CA9-4177-B78A-A435FC37DADC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0E2ED1CD-C7ED-4641-9482-C4BBBA58B623}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0E2ED1CD-C7ED-4641-9482-C4BBBA58B623}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5F4FC5FA-E2FA-456D-813F-6057B7CE7FF0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5F4FC5FA-E2FA-456D-813F-6057B7CE7FF0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17B22C7C-9ECB-4D05-A238-48B40DDA06E8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{17B22C7C-9ECB-4D05-A238-48B40DDA06E8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{17B22C7C-9ECB-4D05-A238-48B40DDA06E8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{17B22C7C-9ECB-4D05-A238-48B40DDA06E8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{458FBDA4-91F9-4A69-BFBC-5AC3D85D4A03}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{458FBDA4-91F9-4A69-BFBC-5AC3D85D4A03}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{458FBDA4-91F9-4A69-BFBC-5AC3D85D4A03}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{458FBDA4-91F9-4A69-BFBC-5AC3D85D4A03}.Release|Any CPU.Build.0 = Release|Any CPU
+		{55451191-0521-41E1-BCCF-6D135D646589}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{55451191-0521-41E1-BCCF-6D135D646589}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{55451191-0521-41E1-BCCF-6D135D646589}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{55451191-0521-41E1-BCCF-6D135D646589}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDA19B53-4E12-456A-ADA7-06654C161D64}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDA19B53-4E12-456A-ADA7-06654C161D64}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDA19B53-4E12-456A-ADA7-06654C161D64}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDA19B53-4E12-456A-ADA7-06654C161D64}.Release|Any CPU.Build.0 = Release|Any CPU
+		{469F0214-2840-446D-A418-7539BDD2DEC0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{469F0214-2840-446D-A418-7539BDD2DEC0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{469F0214-2840-446D-A418-7539BDD2DEC0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{469F0214-2840-446D-A418-7539BDD2DEC0}.Release|Any CPU.Build.0 = Release|Any CPU
+		{95F1F48E-D5D7-4B9E-A0CE-FF5EC6C20190}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{95F1F48E-D5D7-4B9E-A0CE-FF5EC6C20190}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{95F1F48E-D5D7-4B9E-A0CE-FF5EC6C20190}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{95F1F48E-D5D7-4B9E-A0CE-FF5EC6C20190}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{1ED2F1A2-40E3-498C-B13F-AF066EACF58F} = {2EEDF4EB-ED06-4370-9C0A-59502DF1B7F6}
 		{0E26272D-045A-47C2-8928-BD9B980115D5} = {DC5EAE30-96E3-4D38-B3C5-33E587C9FB76}
 		{C291B61B-0729-4DC5-B8E4-147A8E3F801F} = {5D41D463-D53B-4ADC-90AD-44AA03D6340D}
 		{69A27B0A-710B-4CEC-B159-56E34C788665} = {5D41D463-D53B-4ADC-90AD-44AA03D6340D}
-		{193C944B-733B-4E01-87A3-73F7AB40CDC7} = {2EEDF4EB-ED06-4370-9C0A-59502DF1B7F6}
 		{FA539A2D-98DC-4300-9A2C-EC6FE38A7392} = {575A3C3B-17BA-4A8A-9F53-05320913D0A6}
-		{30396678-D653-4C67-A507-1749424A24CD} = {5D41D463-D53B-4ADC-90AD-44AA03D6340D}
 		{DC5EAE30-96E3-4D38-B3C5-33E587C9FB76} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
 		{5D41D463-D53B-4ADC-90AD-44AA03D6340D} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
 		{575A3C3B-17BA-4A8A-9F53-05320913D0A6} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
 		{5A081DFC-0269-480B-853A-89D09AF478A8} = {072853A5-377B-47C4-8644-AF1F4FD669E2}
-		{F97E3B4B-080D-414A-9F00-EE20F4451E36} = {59466C4D-C407-4DD9-B77B-D99162B9FC7C}
-		{38F3191B-1CE0-4EE0-930F-794A2F2F4CDB} = {DC5EAE30-96E3-4D38-B3C5-33E587C9FB76}
 		{9D4A41F1-D444-4244-AAAC-F610D9977B2F} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
 		{42A92357-2A87-4B87-A591-CA78B6CE4461} = {9D4A41F1-D444-4244-AAAC-F610D9977B2F}
 		{74165807-676F-4464-B607-8770C13E8991} = {59466C4D-C407-4DD9-B77B-D99162B9FC7C}
+		{81779103-4CA9-4177-B78A-A435FC37DADC} = {9D99B251-FB4F-49BF-8405-F6E0DE46EB32}
+		{0E2ED1CD-C7ED-4641-9482-C4BBBA58B623} = {9D99B251-FB4F-49BF-8405-F6E0DE46EB32}
+		{5F4FC5FA-E2FA-456D-813F-6057B7CE7FF0} = {9D99B251-FB4F-49BF-8405-F6E0DE46EB32}
+		{17B22C7C-9ECB-4D05-A238-48B40DDA06E8} = {59466C4D-C407-4DD9-B77B-D99162B9FC7C}
+		{458FBDA4-91F9-4A69-BFBC-5AC3D85D4A03} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
+		{55451191-0521-41E1-BCCF-6D135D646589} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
+		{101E0992-8233-42C8-9CAF-FEC799BF5DDB} = {9D99B251-FB4F-49BF-8405-F6E0DE46EB32}
+		{8733C91C-38B3-4105-88A3-11AD82CB78CD} = {072853A5-377B-47C4-8644-AF1F4FD669E2}
+		{CDA19B53-4E12-456A-ADA7-06654C161D64} = {FFFFB03D-8D02-46C5-BD12-EC176C0E056C}
+		{469F0214-2840-446D-A418-7539BDD2DEC0} = {AD790E7D-D664-4B5F-8BE8-01507A2A9F3B}
+		{427B2879-0943-4BF7-97BB-E99BC91D630A} = {A6A7B553-5359-4FB9-B19C-8A23004F49DB}
+		{95F1F48E-D5D7-4B9E-A0CE-FF5EC6C20190} = {9D99B251-FB4F-49BF-8405-F6E0DE46EB32}
 	EndGlobalSection
-	GlobalSection(MonoDevelopProperties) = preSolution
-		version = 0.1
-		StartupItem = src\FakeItEasy\FakeItEasy.csproj
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E70BBF50-5920-49F2-835D-4A2DBD73F0E1}
 	EndGlobalSection
 EndGlobal

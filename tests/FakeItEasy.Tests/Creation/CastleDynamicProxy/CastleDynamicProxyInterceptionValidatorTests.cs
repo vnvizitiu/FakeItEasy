@@ -9,6 +9,7 @@ namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
     using FakeItEasy.Core;
     using FakeItEasy.Creation.CastleDynamicProxy;
     using FakeItEasy.Expressions;
+    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
@@ -31,28 +32,30 @@ namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
             this.validator = new CastleDynamicProxyInterceptionValidator(new MethodInfoManager());
         }
 
-        public static IEnumerable<object[]> NonInterceptableMembers()
+        public static IEnumerable<object?[]> NonInterceptableMembers()
         {
             return TestCases.FromObject(
-                NonInterceptableTestCase.Create(
+                new NonInterceptableTestCase(
                     () => new object().GetType(),
-                    "Non virtual methods can not be intercepted."),
-                NonInterceptableTestCase.Create(
+                    "Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."),
+                new NonInterceptableTestCase(
                     () => object.Equals("foo", "bar"),
                     "Static methods can not be intercepted."),
-                NonInterceptableTestCase.Create(
-                    () => "foo".Count(),
+                new NonInterceptableTestCase(
+                    #pragma warning disable CA1806 // Do not ignore method results
+                    () => "foo".Distinct(),
+                    #pragma warning restore CA1806 // Do not ignore method results
                     "Extension methods can not be intercepted since they're static."),
-                NonInterceptableTestCase.Create(
+                new NonInterceptableTestCase(
                     () => new TypeWithSealedOverride().ToString(),
-                    "Sealed methods can not be intercepted."));
+                    "Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
-        public static IEnumerable<object[]> InterceptableMethods()
+        public static IEnumerable<object?[]> InterceptableMethods()
         {
             return TestCases.FromObject(
-                InterceptionTestCase.Create(() => new object().ToString()),
-                InterceptionTestCase.Create(() =>
+                new InterceptionTestCase(() => new object().ToString()),
+                new InterceptionTestCase(() =>
                     ((IBInterface)A.Fake<IAInterface>(builder => builder.Implements(typeof(IBInterface))))
                         .Method()));
         }
@@ -61,13 +64,12 @@ namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
         [MemberData(nameof(NonInterceptableMembers))]
         public void Should_fail_for_non_interceptable_methods(NonInterceptableTestCase testCase)
         {
-            Guard.AgainstNull(testCase, nameof(testCase));
+            Guard.AgainstNull(testCase);
 
             // Arrange
-            string reason;
 
             // Act
-            var result = this.validator.MethodCanBeInterceptedOnInstance(testCase.Method, testCase.Target, out reason);
+            var result = this.validator.MethodCanBeInterceptedOnInstance(testCase.Method, testCase.Target, out var reason);
 
             // Assert
             result.Should().BeFalse();
@@ -78,13 +80,12 @@ namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
         [MemberData(nameof(InterceptableMethods))]
         public void Should_succeed_for_interceptable_methods(InterceptionTestCase testCase)
         {
-            Guard.AgainstNull(testCase, nameof(testCase));
+            Guard.AgainstNull(testCase);
 
             // Arrange
-            string reason;
 
             // Act
-            var result = this.validator.MethodCanBeInterceptedOnInstance(testCase.Method, testCase.Target, out reason);
+            var result = this.validator.MethodCanBeInterceptedOnInstance(testCase.Method, testCase.Target, out var reason);
 
             // Assert
             result.Should().BeTrue();
@@ -93,45 +94,34 @@ namespace FakeItEasy.Tests.Creation.CastleDynamicProxy
 
         public class InterceptionTestCase
         {
-            public object Target { get; private set; }
-
-            public MethodInfo Method { get; private set; }
-
-            [SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters", Justification = "Needs to be callable with an expression.")]
-            public static InterceptionTestCase Create(Expression<Action> expression)
-            {
-                return Create<InterceptionTestCase>(expression);
-            }
-
-            protected static T Create<T>(LambdaExpression expression) where T : InterceptionTestCase, new()
+            public InterceptionTestCase(Expression<Action> expression)
             {
                 var parser = new CallExpressionParser();
                 var parsed = parser.Parse(expression);
 
-                return new T()
-                {
-                    Method = parsed.CalledMethod,
-                    Target = parsed.CallTarget
-                };
+                this.Method = parsed.CalledMethod;
+                this.Target = parsed.CallTarget;
             }
+
+            public object? Target { get; }
+
+            public MethodInfo Method { get; }
         }
 
         public class NonInterceptableTestCase : InterceptionTestCase
         {
-            public string FailReason { get; private set; }
-
-            [SuppressMessage("Microsoft.Design", "CA1011:ConsiderPassingBaseTypesAsParameters", Justification = "Needs to be callable with an expression.")]
-            public static NonInterceptableTestCase Create(Expression<Action> expression, string failReason)
+            public NonInterceptableTestCase(Expression<Action> expression, string failReason)
+                : base(expression)
             {
-                var result = InterceptionTestCase.Create<NonInterceptableTestCase>(expression);
-                result.FailReason = failReason;
-                return result;
+                this.FailReason = failReason;
             }
+
+            public string FailReason { get; }
         }
 
         public class TypeWithSealedOverride
         {
-            public sealed override string ToString()
+            public sealed override string? ToString()
             {
                 return base.ToString();
             }

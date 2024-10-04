@@ -1,9 +1,85 @@
 namespace FakeItEasy.Tests
 {
     using System;
+    using System.Linq.Expressions;
+    using FakeItEasy.Core;
+    using Xunit;
 
-    public class FakeTests : FacadedTestBase
+    public class FakeTests
     {
-        protected override Type FacadedType => typeof(Fake);
+        [Fact]
+        public void GetFakeManager_should_be_guarded()
+        {
+            // Arrange
+
+            // Act
+
+            // Assert
+            Expression<Action> call = () => Fake.GetFakeManager(A.Dummy<IFoo>());
+            call.Should().BeNullGuarded();
+        }
+
+        [Fact]
+        public void GetCalls_should_be_guarded()
+        {
+            // Arrange
+
+            // Act
+
+            // Assert
+            Expression<Action> call = () => Fake.GetCalls(A.Dummy<object>());
+            call.Should().BeNullGuarded();
+        }
+
+        [Fact]
+        public void ClearConfiguration_should_be_guarded()
+        {
+            // Arrange
+
+            // Act
+
+            // Assert
+#pragma warning disable CS0618 // ClearConfiguration is obsolete
+            Expression<Action> call = () => Fake.ClearConfiguration(A.Dummy<object>());
+#pragma warning restore CS0618 // ClearConfiguration is obsolete
+            call.Should().BeNullGuarded();
+        }
+
+        [Fact]
+        public void ClearRecordedCalls_should_be_guarded()
+        {
+            // Arrange
+
+            // Act
+
+            // Assert
+            Expression<Action> call = () => Fake.ClearRecordedCalls(A.Dummy<object>());
+            call.Should().BeNullGuarded();
+        }
+
+        [Fact]
+        public void TryGetFakeManager_should_be_guarded()
+        {
+            // Arrange
+
+            // Act
+
+            // Assert
+            FakeManager? manager;
+            Expression<Action> call = () => Fake.TryGetFakeManager(A.Dummy<object>(), out manager);
+            call.Should().BeNullGuarded();
+        }
+
+        [Fact]
+        public void Reset_should_be_guarded()
+        {
+            // Arrange
+
+            // Act
+
+            // Assert
+            Expression<Action> call = () => Fake.Reset(A.Dummy<object>());
+            call.Should().BeNullGuarded();
+        }
     }
 }

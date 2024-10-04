@@ -2,37 +2,36 @@ namespace FakeItEasy.Creation
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
-#if FEATURE_NETCORE_REFLECTION
-    using System.Reflection;
-#endif
-    using System.Reflection.Emit;
+    using System.Collections.ObjectModel;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Linq;
+    using System.Linq.Expressions;
 
     internal class ProxyOptions : IProxyOptions
     {
         private readonly List<Type> additionalInterfacesToImplement = new List<Type>();
         private readonly List<Action<object>> proxyConfigurationActions = new List<Action<object>>();
-        private readonly List<CustomAttributeBuilder> additionalAttributes = new List<CustomAttributeBuilder>();
+        private readonly List<Expression<Func<Attribute>>> attributes = new List<Expression<Func<Attribute>>>();
 
-        public IEnumerable<object> ArgumentsForConstructor { get; set; }
+        public static IProxyOptions Default { get; } = new DefaultProxyOptions();
 
-        public IEnumerable<Type> AdditionalInterfacesToImplement => this.additionalInterfacesToImplement;
+        public IEnumerable<object?>? ArgumentsForConstructor { get; set; }
+
+        public ReadOnlyCollection<Type> AdditionalInterfacesToImplement => this.additionalInterfacesToImplement.AsReadOnly();
 
         public IEnumerable<Action<object>> ProxyConfigurationActions => this.proxyConfigurationActions;
 
-        public IEnumerable<CustomAttributeBuilder> AdditionalAttributes => this.additionalAttributes;
+        public IEnumerable<Expression<Func<Attribute>>> Attributes => this.attributes;
+
+        public string? Name { get; set; }
 
         public void AddInterfaceToImplement(Type interfaceType)
         {
-            Guard.AgainstNull(interfaceType, nameof(interfaceType));
+            Guard.AgainstNull(interfaceType);
 
-            if (!interfaceType.GetTypeInfo().IsInterface)
+            if (!interfaceType.IsInterface)
             {
-                throw new ArgumentException(
-                    string.Format(
-                        CultureInfo.CurrentCulture,
-                        "The specified type '{0}' is not an interface",
-                        interfaceType.FullNameCSharp()));
+                throw new ArgumentException(ExceptionMessages.NotAnInterface(interfaceType));
             }
 
             this.additionalInterfacesToImplement.Add(interfaceType);
@@ -43,9 +42,22 @@ namespace FakeItEasy.Creation
             this.proxyConfigurationActions.Add(action);
         }
 
-        public void AddAttribute(CustomAttributeBuilder attribute)
+        public void AddAttribute(Expression<Func<Attribute>> attribute)
         {
-            this.additionalAttributes.Add(attribute);
+            this.attributes.Add(attribute);
+        }
+
+        private class DefaultProxyOptions : IProxyOptions
+        {
+            public IEnumerable<object?>? ArgumentsForConstructor { get; }
+
+            public ReadOnlyCollection<Type> AdditionalInterfacesToImplement { get; } = new ReadOnlyCollection<Type>(new List<Type>());
+
+            public IEnumerable<Action<object>> ProxyConfigurationActions { get; } = Enumerable.Empty<Action<object>>();
+
+            public IEnumerable<Expression<Func<Attribute>>> Attributes { get; } = Enumerable.Empty<Expression<Func<Attribute>>>();
+
+            public string? Name => null;
         }
     }
 }

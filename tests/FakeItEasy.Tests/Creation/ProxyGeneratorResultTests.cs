@@ -43,7 +43,7 @@ namespace FakeItEasy.Tests.Creation
             // Arrange
 
             // Act
-            var result = new ProxyGeneratorResult(A.Fake<ITaggable>());
+            var result = new ProxyGeneratorResult(new object());
 
             // Assert
             result.ProxyWasSuccessfullyGenerated.Should().BeTrue();
@@ -72,14 +72,11 @@ namespace FakeItEasy.Tests.Creation
                 exception: new InvalidOperationException("exception message"));
 
             // Assert
-            var expectedReason = new[]
-            {
-                "reason",
-                "An exception of type System.InvalidOperationException was caught during this call. Its message was:",
-                "exception message"
-            }.AsTextBlock();
+            var expectedReason = @"reason
+An exception of type System.InvalidOperationException was caught during this call. Its message was:
+exception message";
 
-            result.ReasonForFailure.Should().StartWith(expectedReason);
+            result.ReasonForFailure.Should().StartWithModuloLineEndings(expectedReason);
         }
 
         [Fact]
@@ -93,14 +90,11 @@ namespace FakeItEasy.Tests.Creation
                 exception: new TargetInvocationException(new InvalidOperationException("target invocation inner exception message")));
 
             // Assert
-            var expectedReason = new[]
-            {
-                "reason",
-                "An exception of type System.InvalidOperationException was caught during this call. Its message was:",
-                "target invocation inner exception message"
-            }.AsTextBlock();
+            var expectedReason = @"reason
+An exception of type System.InvalidOperationException was caught during this call. Its message was:
+target invocation inner exception message";
 
-            result.ReasonForFailure.Should().StartWith(expectedReason);
+            result.ReasonForFailure.Should().StartWithModuloLineEndings(expectedReason);
         }
 
         [Fact]
@@ -114,21 +108,18 @@ namespace FakeItEasy.Tests.Creation
                 exception: new TargetInvocationException("target invocation exception message", null));
 
             // Assert
-            var expectedReason = new[]
-            {
-                "reason",
-                "An exception of type System.Reflection.TargetInvocationException was caught during this call. Its message was:",
-                "target invocation exception message"
-            }.AsTextBlock();
+            var expectedReason = @"reason
+An exception of type System.Reflection.TargetInvocationException was caught during this call. Its message was:
+target invocation exception message";
 
-            result.ReasonForFailure.Should().StartWith(expectedReason);
+            result.ReasonForFailure.Should().StartWithModuloLineEndings(expectedReason);
         }
 
         [Fact]
         public void Should_set_proxy_when_constructor_with_proxy_is_used()
         {
             // Arrange
-            var proxy = A.Fake<ITaggable>();
+            var proxy = new object();
 
             // Act
             var result = new ProxyGeneratorResult(proxy);
@@ -145,7 +136,9 @@ namespace FakeItEasy.Tests.Creation
             // Act
 
             // Assert
+#pragma warning disable CA1806 // Do not ignore method results
             Expression<Action> call = () => new ProxyGeneratorResult("reason");
+#pragma warning restore CA1806 // Do not ignore method results
             call.Should().BeNullGuarded();
         }
 
@@ -157,7 +150,9 @@ namespace FakeItEasy.Tests.Creation
             // Act
 
             // Assert
-            Expression<Action> call = () => new ProxyGeneratorResult(A.Dummy<ITaggable>());
+#pragma warning disable CA1806 // Do not ignore method results
+            Expression<Action> call = () => new ProxyGeneratorResult(new object());
+#pragma warning restore CA1806 // Do not ignore method results
             call.Should().BeNullGuarded();
         }
     }

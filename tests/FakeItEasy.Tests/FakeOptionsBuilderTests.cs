@@ -2,9 +2,6 @@ namespace FakeItEasy.Tests
 {
     using System;
     using System.Linq;
-#if NETCORE
-    using System.Reflection;
-#endif
     using FakeItEasy.Creation;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
@@ -23,14 +20,14 @@ namespace FakeItEasy.Tests
 
             // Assert
             exception.Should().BeAnExceptionOfType<InvalidOperationException>()
-                .WithMessage("Specified type 'System.String' is not valid. Only 'FakeItEasy.Tests.FakeOptionsBuilderTests' is allowed.");
+                .WithMessage("Specified type System.String is not valid. Only FakeItEasy.Tests.FakeOptionsBuilderTests is allowed.");
         }
 
         [Fact]
         public void Built_in_options_builders_should_have_lower_than_default_priority()
         {
             // Arrange
-            var allOptionsBuilders = typeof(A).GetTypeInformation().Assembly.GetTypes()
+            var allOptionsBuilders = typeof(A).Assembly.GetTypes()
                 .Where(t => t.CanBeInstantiatedAs(typeof(IFakeOptionsBuilder)))
                 .Select(Activator.CreateInstance)
                 .Cast<IFakeOptionsBuilder>();

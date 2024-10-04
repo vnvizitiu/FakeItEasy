@@ -1,0 +1,70 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>$(ValueTaskExtensionsTargetFrameworks)</TargetFrameworks>
+    <SignAssembly>true</SignAssembly>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <BeforePack>AddTfmPlaceholders;$(BeforePackOn)</BeforePack>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Package properties">
+    <Title>FakeItEasy.Extensions.ValueTask</Title>
+    <Authors>Thomas Levesque, FakeItEasy contributors</Authors>
+    <Description>Provides extension methods for configuring methods that return ValueTask or ValueTask&lt;T&gt;.</Description>
+    <PackageTags>FakeItEasy;ValueTask</PackageTags>
+  </PropertyGroup>
+
+  <PropertyGroup Label="Code generation properties">
+    <EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+    <CompilerGeneratedFilesOutputPath>Generated</CompilerGeneratedFilesOutputPath>
+  </PropertyGroup>
+
+  <ItemGroup Label="Code generation items">
+    <Compile Remove="$(CompilerGeneratedFilesOutputPath)/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../../tools/CodeGen/CodeGen.csproj"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="false" />
+  </ItemGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netstandard2.1'))">
+    <Compile Include="../FakeItEasy/ValueTaskReturnValueConfigurationExtensions.cs" />
+    <Compile Include="../FakeItEasy/ValueTaskAsyncReturnValueConfigurationExtensions.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\FakeItEasy\FakeItEasy.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="!$([MSBuild]::IsTargetFrameworkCompatible('$(TargetFramework)', 'netstandard2.1'))">
+    <PackageReference Include="System.Threading.Tasks.Extensions" Version="4.5.3" />
+  </ItemGroup>
+
+  <!-- Selectively include build output for package -->
+  <ItemGroup>
+    <None Include="$(OutputPath)/**/$(AssemblyName).dll" Pack="true" PackagePath="lib" Visible="false" />
+    <None Include="$(OutputPath)/**/$(AssemblyName).xml" Pack="true" PackagePath="lib" Visible="false" />
+    <None Remove="$(OutputPath)/netstandard2.1/**" />
+    <None Remove="$(OutputPath)/net6.0/**" />
+    <None Remove="$(OutputPath)/net8.0/**" />
+  </ItemGroup>
+
+  <!-- Include placeholder files in netstandard2.1 and netX.Y folders in package -->
+  <Target Name="AddTfmPlaceholders">
+    <WriteLinesToFile File="$(IntermediateOutputPath)netstandard2.1/_._" Overwrite="true" Lines="" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)net6.0/_._" Overwrite="true" Lines="" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)net8.0/_._" Overwrite="true" Lines="" />
+    <ItemGroup>
+      <None Include="$(IntermediateOutputPath)netstandard2.1/_._" Pack="true" PackagePath="lib/netstandard2.1" Visible="false" />
+      <None Include="$(IntermediateOutputPath)net6.0/_._" Pack="true" PackagePath="lib/net6.0" Visible="false" />
+      <None Include="$(IntermediateOutputPath)net8.0/_._" Pack="true" PackagePath="lib/net8.0" Visible="false" />
+    </ItemGroup>
+  </Target>
+
+</Project>

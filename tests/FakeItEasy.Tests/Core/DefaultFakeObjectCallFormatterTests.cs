@@ -2,7 +2,6 @@ namespace FakeItEasy.Tests.Core
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
-    using System.Globalization;
     using System.Reflection;
     using FakeItEasy.Configuration;
     using FakeItEasy.Core;
@@ -10,16 +9,19 @@ namespace FakeItEasy.Tests.Core
     using FluentAssertions;
     using Xunit;
 
+    using static FakeItEasy.Tests.TestHelpers.ExpressionHelper;
+
     public class DefaultFakeObjectCallFormatterTests
     {
-#pragma warning disable 649
-        [UnderTest]
-        private DefaultFakeObjectCallFormatter formatter;
-#pragma warning restore 649
+        private readonly DefaultFakeObjectCallFormatter formatter;
+        private readonly ArgumentValueFormatter argumentFormatter;
+        private readonly IFakeManagerAccessor fakeManagerAccessor;
 
         public DefaultFakeObjectCallFormatterTests()
         {
-            Fake.InitializeFixture(this);
+            this.argumentFormatter = A.Fake<ArgumentValueFormatter>();
+            this.fakeManagerAccessor = A.Fake<IFakeManagerAccessor>();
+            this.formatter = new DefaultFakeObjectCallFormatter(this.argumentFormatter, this.fakeManagerAccessor);
         }
 
         public interface ITypeWithMethodThatTakesArguments
@@ -29,17 +31,14 @@ namespace FakeItEasy.Tests.Core
             void MoreThanTwo(string one, string two, string three);
         }
 
-        [Fake]
-        private ArgumentValueFormatter ArgumentFormatter { get; set; }
-
-        [Fake]
-        private IFakeManagerAccessor FakeManagerAccessor { get; set; }
-
         [Fact]
         public void Should_start_with_method_name()
         {
             // Arrange
-            var call = this.CreateFakeCall(typeof(string), typeof(object).GetMethod("Equals", new[] { typeof(object) }), "foo");
+            var call = this.CreateFakeCall(
+                typeof(string),
+                GetMethodInfo<object>(x => x.Equals(new object())),
+                "foo");
 
             // Act
             var description = this.formatter.GetDescription(call);
@@ -52,7 +51,7 @@ namespace FakeItEasy.Tests.Core
         public void Should_write_empty_argument_list()
         {
             // Arrange
-            var call = this.CreateFakeCall(typeof(object).GetMethod("ToString", new Type[] { }));
+            var call = this.CreateFakeCall(GetMethodInfo<object>(x => x.ToString()));
 
             // Act
             var description = this.formatter.GetDescription(call);
@@ -62,19 +61,18 @@ namespace FakeItEasy.Tests.Core
         }
 
         [Fact]
-        [UsingCulture("en-US")]
         public void Should_write_argument_list()
         {
             // Arrange
             var call = this.CreateFakeCallToFoo("argument value", 1);
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString("argument value")).Returns("\"argument value\"");
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString(1)).Returns("1");
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString("argument value")).Returns(@"""argument value""");
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString(1)).Returns("1");
 
             // Act
             var description = this.formatter.GetDescription(call);
 
             // Assert
-            description.Should().EndWith("(argument1: \"argument value\", argument2: 1)");
+            description.Should().EndWith(@"(argument1: ""argument value"", argument2: 1)");
         }
 
         [Fact]
@@ -82,13 +80,13 @@ namespace FakeItEasy.Tests.Core
         {
             // Arrange
             var call = this.CreateFakeCall(
-                typeof(ITypeWithMethodThatTakesArguments).GetMethod("MoreThanTwo", new[] { typeof(string), typeof(string), typeof(string) }),
+                GetMethodInfo<ITypeWithMethodThatTakesArguments>(x => x.MoreThanTwo(string.Empty, string.Empty, string.Empty)),
                 "one",
                 "two",
                 "three");
 
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString(A<object>._))
-                .ReturnsLazily(x => x.GetArgument<object>(0).ToString());
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString(A<object>._))
+                .ReturnsLazily(x => (x.GetArgument<object>(0)!).ToString()!);
 
             // Act
             var description = this.formatter.GetDescription(call);
@@ -100,14 +98,14 @@ namespace FakeItEasy.Tests.Core
     two: two,
     three: three)";
 
-            description.Should().EndWith(expectedDescription);
+            description.Should().EndWithModuloLineEndings(expectedDescription);
         }
 
         [Fact]
         public void Should_write_property_getter_properly()
         {
             // Arrange
-            var propertyGetter = typeof(TypeWithProperties).GetProperty("NormalProperty").GetGetMethod();
+            var propertyGetter = GetMethodInfo((TypeWithProperties x) => x.NormalProperty);
             var call = this.CreateFakeCall(typeof(TypeWithProperties), propertyGetter);
 
             // Act
@@ -121,24 +119,26 @@ namespace FakeItEasy.Tests.Core
         public void Should_write_property_setter_properly()
         {
             // Arrange
-            var propertyGetter = typeof(TypeWithProperties).GetProperty("NormalProperty").GetSetMethod();
+            var propertyGetter = typeof(TypeWithProperties).GetProperty(
+                nameof(TypeWithProperties.NormalProperty))!
+                .GetSetMethod()!;
             var call = this.CreateFakeCall(typeof(TypeWithProperties), propertyGetter, "foo");
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString("foo")).Returns("\"foo\"");
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString("foo")).Returns(@"""foo""");
 
             // Act
             var description = this.formatter.GetDescription(call);
 
             // Assert
-            description.Should().Be("FakeItEasy.Tests.Core.DefaultFakeObjectCallFormatterTests+TypeWithProperties.NormalProperty = \"foo\"");
+            description.Should().Be(@"FakeItEasy.Tests.Core.DefaultFakeObjectCallFormatterTests+TypeWithProperties.NormalProperty = ""foo""");
         }
 
         [Fact]
         public void Should_write_indexed_property_getter_properly()
         {
             // Arrange
-            var propertyGetter = typeof(TypeWithProperties).GetProperty("Item").GetGetMethod();
+            var propertyGetter = GetMethodInfo((TypeWithProperties x) => x[0]);
             var call = this.CreateFakeCall(typeof(TypeWithProperties), propertyGetter, 0);
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString(0)).Returns("0");
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString(0)).Returns("0");
 
             // Act
             var description = this.formatter.GetDescription(call);
@@ -151,16 +151,17 @@ namespace FakeItEasy.Tests.Core
         public void Should_write_indexed_property_setter_properly()
         {
             // Arrange
-            var propertyGetter = typeof(TypeWithProperties).GetProperty("Item").GetSetMethod();
-            var call = this.CreateFakeCall(typeof(TypeWithProperties), propertyGetter, 0, "argument");
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString(0)).Returns("0");
-            A.CallTo(() => this.ArgumentFormatter.GetArgumentValueAsString("argument")).Returns("\"argument\"");
+            var propertySetter = typeof(TypeWithProperties).GetProperty("Item")!
+                .GetSetMethod()!;
+            var call = this.CreateFakeCall(typeof(TypeWithProperties), propertySetter, 0, "argument");
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString(0)).Returns("0");
+            A.CallTo(() => this.argumentFormatter.GetArgumentValueAsString("argument")).Returns(@"""argument""");
 
             // Act
             var description = this.formatter.GetDescription(call);
 
             // Assert
-            description.Should().Be("FakeItEasy.Tests.Core.DefaultFakeObjectCallFormatterTests+TypeWithProperties.Item[index: 0] = \"argument\"");
+            description.Should().Be(@"FakeItEasy.Tests.Core.DefaultFakeObjectCallFormatterTests+TypeWithProperties.Item[index: 0] = ""argument""");
         }
 
         private IFakeObjectCall CreateFakeCall(MethodInfo method, params object[] arguments)
@@ -177,7 +178,7 @@ namespace FakeItEasy.Tests.Core
             A.CallTo(() => call.FakedObject).Returns(A.Fake<object>());
 
             var fakeManager = A.Fake<FakeManager>();
-            A.CallTo(() => this.FakeManagerAccessor.GetFakeManager(call.FakedObject)).Returns(fakeManager);
+            A.CallTo(() => this.fakeManagerAccessor.GetFakeManager(call.FakedObject)).Returns(fakeManager);
             A.CallTo(() => fakeManager.FakeObjectType).Returns(typeOfFakeObject);
 
             return call;
@@ -186,22 +187,20 @@ namespace FakeItEasy.Tests.Core
         private IFakeObjectCall CreateFakeCallToFoo(string argument1, object argument2)
         {
             return this.CreateFakeCall(
-                typeof(ITypeWithMethodThatTakesArguments)
-                    .GetMethod(nameof(ITypeWithMethodThatTakesArguments.Foo), new[] { typeof(string), typeof(object) }),
+                GetMethodInfo<ITypeWithMethodThatTakesArguments>(x => x.Foo(string.Empty, new object())),
                 argument1,
                 argument2);
         }
 
         private class TypeWithProperties
         {
-            public string NormalProperty { get; set; }
+            public string NormalProperty { get; set; } = "initial NormalProperty value";
 
             [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "index", Justification = "Required for testing.")]
             [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "value", Justification = "Required for testing.")]
-            [SuppressMessage("Microsoft.Performance", "CA1822:MarkMembersAsStatic", Justification = "Required for testing.")]
             public string this[int index]
             {
-                get { return index.ToString(CultureInfo.InvariantCulture); }
+                get { return index.ToString(); }
                 set { }
             }
         }

@@ -26,19 +26,17 @@ namespace FakeItEasy.Specs
             int MethodThatLooksLikeAPropertyGetter();
         }
 
-        [SuppressMessage("Microsoft.Naming", "CA2204:Literals should be spelled correctly", MessageId = "propertySpecification", Justification = "It's an identifier")]
-        [Scenario]
-        public static void ConfiguringSetterWithNull(
-            Exception exception)
+        public interface IHaveInterestingDerivedProperties : IHaveInterestingProperties
         {
-            "When assignment of a property is configured using a null expression"
-                .x(() => exception = Record.Exception(() => A.CallToSet<int>(null)));
+        }
 
-            "Then an argument null exception is thrown"
-                .x(() => exception.Should().BeAnExceptionOfType<ArgumentNullException>());
+        public interface IHaveAReadWriteProperty
+        {
+            int ReadWriteProperty { get; set; }
+        }
 
-            "And the parameter name is 'propertySpecification'"
-                .x(() => exception.As<ArgumentNullException>().ParamName.Should().Be("propertySpecification"));
+        public interface IAmbiguousDerived : IHaveInterestingProperties, IHaveAReadWriteProperty
+        {
         }
 
         [Scenario]
@@ -72,7 +70,7 @@ namespace FakeItEasy.Specs
 
             "And the exception message indicates that the property is read-only"
                 .x(() => exception.Message.Should().Be(
-                    $"The property '{nameof(IHaveInterestingProperties.ReadOnlyProperty)}' does not have a setter."));
+                    $"The property {nameof(IHaveInterestingProperties.ReadOnlyProperty)} does not have a setter."));
         }
 
         [Scenario]
@@ -134,6 +132,76 @@ namespace FakeItEasy.Specs
 
             "Then the configured behavior is used"
                 .x(() => wasConfiguredBehaviorUsed.Should().BeTrue());
+        }
+
+        [Scenario]
+        [Example(int.MinValue)]
+        [Example(-42)]
+        [Example(0)]
+        [Example(42)]
+        [Example(int.MaxValue)]
+        public static void ConfiguringSetterToThrowForAnyValue(
+            int value,
+            IHaveInterestingProperties subject,
+            Exception exception)
+        {
+            "Given a Fake with a property"
+                .x(() => subject = A.Fake<IHaveInterestingProperties>());
+
+            "And assignment of the property is configured to throw an exception for any value"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty).Throws(new InvalidOperationException("oops")));
+
+            $"When I assign the property to {value}"
+                .x(() => exception = Record.Exception(() => subject.ReadWriteProperty = value));
+
+            "Then it throws the configured exception"
+                .x(() => exception.Should().BeAnExceptionOfType<InvalidOperationException>().Which.Message.Should().Be("oops"));
+        }
+
+        [Scenario]
+        [Example(int.MinValue)]
+        [Example(-42)]
+        [Example(0)]
+        [Example(42)]
+        [Example(int.MaxValue)]
+        public static void ConfiguringSetterToDoNothingForAnyValue(
+            int value,
+            IHaveInterestingProperties subject)
+        {
+            "Given a Fake with a property"
+                .x(() => subject = A.Fake<IHaveInterestingProperties>());
+
+            "And assignment of the property is configured to do nothing for any value"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty).DoesNothing());
+
+            $"When I assign the property to {value}"
+                .x(() => subject.ReadWriteProperty = value);
+
+            "Then the default behavior is suppressed and the assigned value is not returned"
+                .x(() => subject.ReadWriteProperty.Should().Be(0));
+        }
+
+        [Scenario]
+        [Example(int.MinValue)]
+        [Example(-42)]
+        [Example(0)]
+        [Example(42)]
+        [Example(int.MaxValue)]
+        public static void ConfiguringSetterToCallBaseMethodForAnyValue(
+            int value,
+            ClassWithInterestingProperties subject)
+        {
+            "Given a Fake with a property"
+                .x(() => subject = A.Fake<ClassWithInterestingProperties>());
+
+            "And assignment of the property is configured to call the base implementation for any value"
+                .x(() => A.CallToSet(() => subject.ConfigurableProperty).CallsBaseMethod());
+
+            $"When I assign the property to {value}"
+                .x(() => subject.ConfigurableProperty = value);
+
+            "Then the base implementation is called"
+                .x(() => subject.WasBaseSetterCalled.Should().BeTrue());
         }
 
         [Scenario]
@@ -359,14 +427,191 @@ namespace FakeItEasy.Specs
                 .x(() => wasConfiguredBehaviorUsed.Should().Be(fateOfConfiguredBehavior == "used"));
         }
 
+        [Scenario]
+        public static void ConfiguringSetterFromBaseInterfaceOnFakedInterface(
+            IHaveInterestingDerivedProperties subject,
+            bool wasConfiguredBehaviorUsed)
+        {
+            "Given an interface with a read/write property"
+                .See<IHaveInterestingProperties>();
+
+            "And an interface that inherits it"
+                .See<IHaveInterestingDerivedProperties>();
+
+            "And a Fake created from the derived interface"
+                .x(() => subject = A.Fake<IHaveInterestingDerivedProperties>());
+
+            "And assignment of the property is configured for any value"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty).Invokes(call => wasConfiguredBehaviorUsed = true));
+
+            "When I assign a value to the property"
+                .x(() => subject.ReadWriteProperty = 0);
+
+            "Then the configured behavior is used"
+                .x(() => wasConfiguredBehaviorUsed.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void ConfiguringSetterFromBaseInterfaceOnFakedInterfaceOnBaseInterfaceTypedVar(
+            IHaveInterestingProperties subject,
+            bool wasConfiguredBehaviorUsed)
+        {
+            "Given an interface with a read/write property"
+                .See<IHaveInterestingProperties>();
+
+            "And an interface that inherits it"
+                .See<IHaveInterestingDerivedProperties>();
+
+            "And a Fake created from the derived interface but assigned to a variable of the interface's type"
+                .x(() => subject = A.Fake<IHaveInterestingDerivedProperties>());
+
+            "And assignment of the property is configured for any value"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty).Invokes(call => wasConfiguredBehaviorUsed = true));
+
+            "When I assign a value to the property"
+                .x(() => subject.ReadWriteProperty = 0);
+
+            "Then the configured behavior is used"
+                .x(() => wasConfiguredBehaviorUsed.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void ConfiguringSetterFromBaseInterfaceOnFakedClass(
+            ClassImplementingInterfaceWithInterestingProperties subject,
+            bool wasConfiguredBehaviorUsed)
+        {
+            "Given an interface with a read/write property"
+                .See<IHaveInterestingProperties>();
+
+            "And a class that implements it"
+                .See<ClassImplementingInterfaceWithInterestingProperties>();
+
+            "And a Fake created from the class"
+                .x(() => subject = A.Fake<ClassImplementingInterfaceWithInterestingProperties>());
+
+            "And assignment of the property is configured for any value"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty).Invokes(call => wasConfiguredBehaviorUsed = true));
+
+            "When I assign a value to the property"
+                .x(() => subject.ReadWriteProperty = 0);
+
+            "Then the configured behavior is used"
+                .x(() => wasConfiguredBehaviorUsed.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void ConfiguringSetterFromAmbiguousBaseInterface(
+            IAmbiguousDerived subject,
+            bool wasConfiguredBehaviorUsed)
+        {
+            "Given a interface that inherits from two interfaces that have a read/write property with the same name and signature"
+                .See<IAmbiguousDerived>();
+
+            "And a fake created from the derived interface"
+                .x(() => subject = A.Fake<IAmbiguousDerived>());
+
+            "And assignment of the property of the second base interface is configured for any value"
+                .x(() => A.CallToSet(() => ((IHaveAReadWriteProperty)subject).ReadWriteProperty).Invokes(call => wasConfiguredBehaviorUsed = true));
+
+            "When I assign a value to the property"
+                .x(() => ((IHaveAReadWriteProperty)subject).ReadWriteProperty = 0);
+
+            "Then the configured behavior is used"
+                .x(() => wasConfiguredBehaviorUsed.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void ConfiguringSetterFromBaseInterfaceOnFakedClassFromInterfaceTypedVar(
+            IHaveInterestingProperties subject,
+            bool wasConfiguredBehaviorUsed)
+        {
+            "Given an interface with a read/write property"
+                .See<IHaveInterestingProperties>();
+
+            "And a class that implements it"
+                .See<ClassImplementingInterfaceWithInterestingProperties>();
+
+            "And a Fake created from the class but assigned to a variable of the interface's type"
+                .x(() => subject = A.Fake<ClassImplementingInterfaceWithInterestingProperties>());
+
+            "And assignment of the property is configured for any value"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty).Invokes(call => wasConfiguredBehaviorUsed = true));
+
+            "When I assign a value to the property"
+                .x(() => subject.ReadWriteProperty = 0);
+
+            "Then the configured behavior is used"
+                .x(() => wasConfiguredBehaviorUsed.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void ConfiguringSetterToInvokeACallbackAndThenAnother(IHaveInterestingProperties subject, bool wasFirstCallMade, bool wasSecondCallMade)
+        {
+            "Given an interface with a read/write property"
+                .See<IHaveInterestingProperties>();
+
+            "And a Fake created from interface"
+                .x(() => subject = A.Fake<IHaveInterestingProperties>());
+
+            "And assignment of the property is configured to invoke a callback once, then another"
+                .x(() => A.CallToSet(() => subject.ReadWriteProperty)
+                    .Invokes(() => wasFirstCallMade = true).Once().Then
+                    .Invokes(() => wasSecondCallMade = true));
+
+            "When I assign a value to the property"
+                .x(() => subject.ReadWriteProperty = 0);
+
+            "Then the first configured callback is executed"
+                .x(() => wasFirstCallMade.Should().BeTrue());
+
+            "And then the second configured callback is not executed"
+                .x(() => wasSecondCallMade.Should().BeFalse());
+
+            "And when I assign another value to the property"
+                .x(() => subject.ReadWriteProperty = 1);
+
+            "Then the second configured callback is executed"
+                .x(() => wasSecondCallMade.Should().BeTrue());
+        }
+
         public class ClassWithInterestingProperties
         {
-            [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Required for testing.")]
 #pragma warning disable 649
             internal int Field;
 #pragma warning restore 649
 
             public int NonConfigurableProperty { get; set; }
+
+            public virtual int ConfigurableProperty
+            {
+                get { return 0; }
+                set { this.WasBaseSetterCalled = true; }
+            }
+
+            public bool WasBaseSetterCalled { get; private set; }
+        }
+
+        public class ClassImplementingInterfaceWithInterestingProperties : IHaveInterestingProperties
+        {
+            public virtual int ReadWriteProperty { get; set; }
+
+            public virtual int ReadOnlyProperty { get; } = 7;
+
+            public virtual bool this[string genus, string species]
+            {
+                get => false;
+                set { }
+            }
+
+            public virtual int this[string commonName]
+            {
+                get => 3;
+                set { }
+            }
+
+            public virtual string this[int count] => string.Empty;
+
+            public virtual int MethodThatLooksLikeAPropertyGetter() => 0;
         }
     }
 }

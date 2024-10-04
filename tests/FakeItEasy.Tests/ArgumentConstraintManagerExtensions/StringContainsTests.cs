@@ -1,6 +1,7 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
     using System.Collections.Generic;
+    using FakeItEasy.Tests.TestHelpers;
     using Xunit;
 
     public class StringContainsTests
@@ -8,18 +9,19 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
     {
         protected override string ExpectedDescription => "string that contains \"bar\"";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
                 "foo",
                 "baz",
                 "biz",
                 string.Empty,
-                null,
-                "lorem ipsum");
+                (object?)null,
+                "lorem ipsum",
+                "BAR");
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
                 "bar",
@@ -42,9 +44,11 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
             base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
-        protected override void CreateConstraint(IArgumentConstraintManager<string> scope)
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<string> scope)
         {
+#pragma warning disable CA1307 // Specify StringComparison
             scope.Contains("bar");
+#pragma warning restore CA1307 // Specify StringComparison
         }
     }
 }

@@ -1,10 +1,8 @@
 namespace FakeItEasy.Tests.Core
 {
     using System;
-    using System.Reflection;
     using FakeItEasy.Core;
     using FakeItEasy.Creation;
-    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
@@ -13,28 +11,28 @@ namespace FakeItEasy.Tests.Core
         private readonly object proxy;
         private readonly FakeManager fakeManager;
 
-        [Fake]
-        private FakeManager.Factory fakeManagerFactory = null;
-
-        [Fake]
-        private IFakeManagerAccessor fakeManagerAccessor = null;
-
-        [Fake]
-        private Type typeOfFake = null;
-
-        [Fake]
-        private IProxyOptions proxyOptions = null;
-
-        [UnderTest]
-        private FakeManagerProvider fakeManagerProvider = null;
+        private readonly FakeManager.Factory fakeManagerFactory;
+        private readonly IFakeManagerAccessor fakeManagerAccessor;
+        private readonly Type typeOfFake;
+        private readonly IProxyOptions proxyOptions;
+        private readonly FakeManagerProvider fakeManagerProvider;
 
         public FakeManagerProviderTests()
         {
-            Fake.InitializeFixture(this);
+            this.fakeManagerFactory = A.Fake<FakeManager.Factory>();
+            this.fakeManagerAccessor = A.Fake<IFakeManagerAccessor>();
+            this.typeOfFake = A.Fake<Type>();
+            this.proxyOptions = A.Fake<IProxyOptions>();
+
+            this.fakeManagerProvider = new FakeManagerProvider(
+                this.fakeManagerFactory,
+                this.fakeManagerAccessor,
+                this.typeOfFake,
+                this.proxyOptions);
 
             this.proxy = new object();
-            this.fakeManager = new FakeManager(typeof(int), this.proxy);
-            A.CallTo(() => this.fakeManagerFactory(A<Type>._, this.proxy)).Returns(this.fakeManager);
+            this.fakeManager = new FakeManager(typeof(int), this.proxy, null);
+            A.CallTo(() => this.fakeManagerFactory(A<Type>._, this.proxy, A<string>.Ignored)).Returns(this.fakeManager);
         }
 
         [Fact]
@@ -58,7 +56,7 @@ namespace FakeItEasy.Tests.Core
             this.fakeManagerProvider.Fetch(this.proxy);
 
             // Assert
-            A.CallTo(() => this.fakeManagerAccessor.TagProxy(this.proxy, this.fakeManager)).MustHaveHappened();
+            A.CallTo(() => this.fakeManagerAccessor.SetFakeManager(this.proxy, this.fakeManager)).MustHaveHappened();
         }
 
         [Fact]
@@ -93,7 +91,7 @@ namespace FakeItEasy.Tests.Core
             fakeCallProcessor1.Should().BeSameAs(fakeCallProcessor2);
             fakeCallProcessor2.Should().BeSameAs(fakeCallProcessor3);
 
-            A.CallTo(() => this.fakeManagerFactory(this.typeOfFake, this.proxy)).MustHaveHappened(Repeated.Exactly.Once);
+            A.CallTo(() => this.fakeManagerFactory(this.typeOfFake, this.proxy, A<string>.Ignored)).MustHaveHappenedOnceExactly();
         }
 
         [Fact]
@@ -107,30 +105,7 @@ namespace FakeItEasy.Tests.Core
             this.fakeManagerProvider.EnsureInitialized(this.proxy);
 
             // Assert
-            A.CallTo(() => this.fakeManagerFactory(this.typeOfFake, this.proxy)).MustHaveHappened(Repeated.Exactly.Once);
-        }
-
-#if FEATURE_BINARY_SERIALIZATION
-        [Fact]
-        public void Should_be_able_to_fetch_a_serialized_and_deserialized_initialized_provider()
-        {
-            // Arrange
-            this.fakeManagerProvider.EnsureInitialized(this.proxy);
-            var deserializedFakeManagerProvider = BinarySerializationHelper.SerializeAndDeserialize(this.fakeManagerProvider);
-            var deserializedFakeManager = GetInitializedFakeManager(deserializedFakeManagerProvider);
-
-            // Act
-            var exception = Record.Exception(() => deserializedFakeManagerProvider.Fetch(deserializedFakeManager.Object));
-
-            // Assert
-            exception.Should().BeNull();
-        }
-#endif
-
-        private static FakeManager GetInitializedFakeManager(FakeManagerProvider fakeManagerProvider)
-        {
-            var fieldInfo = fakeManagerProvider.GetType().GetField("initializedFakeManager", BindingFlags.NonPublic | BindingFlags.Instance);
-            return (FakeManager)fieldInfo.GetValue(fakeManagerProvider);
+            A.CallTo(() => this.fakeManagerFactory(this.typeOfFake, this.proxy, A<string>.Ignored)).MustHaveHappenedOnceExactly();
         }
     }
 }

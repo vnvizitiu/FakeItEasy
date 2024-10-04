@@ -6,13 +6,12 @@ namespace FakeItEasy.Tests
     public abstract class ArgumentConstraintTestBase<T>
         : ArgumentConstraintTestBase
     {
-        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors",
-            Justification = "CreateCosntraint has no unsafe side effects.")]
+        [SuppressMessage("Microsoft.Usage", "CA2214:DoNotCallOverridableMethodsInConstructors", Justification = "CreateCosntraint has no unsafe side effects.")]
         protected ArgumentConstraintTestBase()
         {
-            this.CreateConstraint(new DefaultArgumentConstraintManager<T>(x => this.ConstraintField = x));
+            this.CreateConstraint(new DefaultArgumentConstraintManager<T>(x => this.Constraint = x));
         }
 
-        protected abstract void CreateConstraint(IArgumentConstraintManager<T> scope);
+        protected abstract void CreateConstraint(INegatableArgumentConstraintManager<T> scope);
     }
 }

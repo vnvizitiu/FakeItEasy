@@ -9,8 +9,8 @@ namespace FakeItEasy.Tests
     public class RaiseTests
     {
         private readonly IFoo foo;
-        private object sender;
-        private EventArgs eventArguments;
+        private object? sender;
+        private EventArgs? eventArguments;
 
         public RaiseTests()
         {
@@ -90,7 +90,7 @@ namespace FakeItEasy.Tests
             // Arrange
 
             // Act
-            var exception = Record.Exception(() => { foo.SomethingHappened += Raise.WithEmpty(); });
+            var exception = Record.Exception(() => { this.foo.SomethingHappened += Raise.WithEmpty(); });
 
             // Assert
             exception.Should().BeNull();
@@ -115,7 +115,7 @@ namespace FakeItEasy.Tests
         public void Should_not_leak_handlers_when_raising()
         {
             // Arrange
-            var eventHandlerArgumentProvider = ServiceLocator.Current.Resolve<EventHandlerArgumentProviderMap>();
+            var eventHandlerArgumentProvider = ServiceLocator.Resolve<EventHandlerArgumentProviderMap>();
 
             this.foo.SomethingHappened += this.Foo_SomethingHappened;
 
@@ -125,18 +125,17 @@ namespace FakeItEasy.Tests
             this.foo.SomethingHappened += raisingHandler;
 
             // Assert
-            IEventRaiserArgumentProvider ignoredArgumentProvider;
-            eventHandlerArgumentProvider.TryTakeArgumentProviderFor(raisingHandler, out ignoredArgumentProvider)
+            eventHandlerArgumentProvider.TryTakeArgumentProviderFor(raisingHandler, out _)
                 .Should().BeFalse();
         }
 
-        private void Foo_SomethingHappened(object newSender, EventArgs e)
+        private void Foo_SomethingHappened(object? newSender, EventArgs e)
         {
             this.sender = newSender;
             this.eventArguments = e;
         }
 
-        private void Foo_SomethingHappenedThrows(object newSender, EventArgs e)
+        private void Foo_SomethingHappenedThrows(object? newSender, EventArgs e)
         {
             throw new NotImplementedException();
         }

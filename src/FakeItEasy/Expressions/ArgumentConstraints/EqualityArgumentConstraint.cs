@@ -1,38 +1,52 @@
 namespace FakeItEasy.Expressions.ArgumentConstraints
 {
+    using System;
+    using System.Diagnostics.CodeAnalysis;
     using FakeItEasy.Core;
 
     internal class EqualityArgumentConstraint
         : IArgumentConstraint
     {
-        public EqualityArgumentConstraint(object expectedValue)
-        {
-            this.ExpectedValue = expectedValue;
-        }
+        private readonly object expectedValue;
 
-        public object ExpectedValue { get; }
+        private EqualityArgumentConstraint(object expectedValue)
+        {
+            this.expectedValue = expectedValue;
+        }
 
         public string ConstraintDescription => this.ToString();
 
-        public bool IsValid(object argument)
+        public static IArgumentConstraint FromExpectedValue(object? expectedValue)
+            => expectedValue is null
+                ? NullArgumentConstraint.Instance
+                : new EqualityArgumentConstraint(expectedValue);
+
+        public bool IsValid(object? argument)
         {
-            return object.Equals(this.ExpectedValue, argument);
+            if (argument is null)
+            {
+                return false;
+            }
+
+            var argumentEqualityComparer = ServiceLocator.Resolve<ArgumentEqualityComparer>();
+            return argumentEqualityComparer.AreEqual(this.expectedValue, argument);
         }
 
+        [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Any type of exception may be encountered.")]
         public override string ToString()
         {
-            if (this.ExpectedValue == null)
+            try
             {
-                return "<NULL>";
+                var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
+                writer.WriteArgumentValue(this.expectedValue);
+                return writer.Builder.ToString();
             }
-
-            var stringValue = this.ExpectedValue as string;
-            if (stringValue != null)
+            catch (Exception ex) when (ex is not UserCallbackException)
             {
-                return "\"{0}\"".FormatInvariant(stringValue);
+                return Fake.TryGetFakeManager(this.expectedValue, out var manager)
+                    ? manager.FakeObjectDisplayName
+                    : this.expectedValue.GetType().ToString();
             }
-
-            return this.ExpectedValue.ToString();
         }
 
         public void WriteDescription(IOutputWriter writer)

@@ -2,55 +2,46 @@ namespace FakeItEasy.Core
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
-    using System.IO;
     using System.Linq;
+    using System.Text;
 
     internal class FakeAsserter : IFakeAsserter
     {
         private readonly CallWriter callWriter;
-        private readonly IEnumerable<IFakeObjectCall> calls;
+        private readonly StringBuilderOutputWriter.Factory outputWriterFactory;
+        private readonly IEnumerable<CompletedFakeObjectCall> calls;
+        private readonly int lastSequenceNumber;
 
-        public FakeAsserter(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter)
+        public FakeAsserter(IEnumerable<CompletedFakeObjectCall> calls, int lastSequenceNumber, CallWriter callWriter, StringBuilderOutputWriter.Factory outputWriterFactory)
         {
-            Guard.AgainstNull(calls, nameof(calls));
-            Guard.AgainstNull(callWriter, nameof(callWriter));
+            Guard.AgainstNull(calls);
+            Guard.AgainstNull(callWriter);
 
             this.calls = calls;
+            this.lastSequenceNumber = lastSequenceNumber;
             this.callWriter = callWriter;
+            this.outputWriterFactory = outputWriterFactory;
         }
 
-        public delegate IFakeAsserter Factory(IEnumerable<IFakeObjectCall> calls);
+        public delegate IFakeAsserter Factory(IEnumerable<CompletedFakeObjectCall> calls, int lastSequenceNumber);
 
         public virtual void AssertWasCalled(
-            Func<IFakeObjectCall, bool> callPredicate, string callDescription, Func<int, bool> repeatPredicate, string repeatDescription)
+            Func<ICompletedFakeObjectCall, bool> callPredicate, Action<IOutputWriter> callDescriber, CallCountConstraint callCountConstraint)
         {
-            var matchedCallCount = this.calls.Count(callPredicate);
-            if (!repeatPredicate(matchedCallCount))
+            bool IsBeforeAssertionStart(CompletedFakeObjectCall call) => call.SequenceNumber <= this.lastSequenceNumber;
+
+            var matchedCallCount = this.calls.Count(c => IsBeforeAssertionStart(c) && callPredicate(c));
+            if (!callCountConstraint.Matches(matchedCallCount))
             {
-                var message = CreateExceptionMessage(this.calls, this.callWriter, callDescription, repeatDescription, matchedCallCount);
+                var description = this.outputWriterFactory.Invoke();
+                callDescriber.Invoke(description);
+
+                var message = this.CreateExceptionMessage(this.calls.Where(IsBeforeAssertionStart), description.Builder.ToString(), callCountConstraint.ToString(), matchedCallCount);
                 throw new ExpectationException(message);
             }
         }
 
-        private static string CreateExceptionMessage(
-            IEnumerable<IFakeObjectCall> calls, CallWriter callWriter, string callDescription, string repeatDescription, int matchedCallCount)
-        {
-            var writer = new StringBuilderOutputWriter();
-            writer.WriteLine();
-
-            using (writer.Indent())
-            {
-                AppendCallDescription(callDescription, writer);
-                AppendExpectation(calls, repeatDescription, matchedCallCount, writer);
-                AppendCallList(calls, callWriter, writer);
-                writer.WriteLine();
-            }
-
-            return writer.Builder.ToString();
-        }
-
-        private static void AppendCallDescription(string callDescription, IOutputWriter writer)
+        private static void AppendCallDescription(string callDescription, StringBuilderOutputWriter writer)
         {
             writer.WriteLine();
             writer.Write("Assertion failed for the following call:");
@@ -63,13 +54,27 @@ namespace FakeItEasy.Core
             }
         }
 
-        private static void AppendExpectation(IEnumerable<IFakeObjectCall> calls, string repeatDescription, int matchedCallCount, IOutputWriter writer)
+        private static void AppendExpectation(IEnumerable<IFakeObjectCall> calls, string callCountDescription, int matchedCallCount, StringBuilderOutputWriter writer)
         {
-            writer.Write("Expected to find it {0} ", repeatDescription);
+            writer.Write("Expected to find it {0} ", callCountDescription);
 
             if (calls.Any())
             {
-                writer.Write("but found it #{0} times among the calls:", matchedCallCount);
+                switch (matchedCallCount)
+                {
+                    case 0:
+                        writer.Write("but didn't find it among the calls:");
+                        break;
+                    case 1:
+                        writer.Write("but found it once among the calls:");
+                        break;
+                    case 2:
+                        writer.Write("but found it twice among the calls:");
+                        break;
+                    default:
+                        writer.Write("but found it {0} times among the calls:", matchedCallCount);
+                        break;
+                }
             }
             else
             {
@@ -79,12 +84,29 @@ namespace FakeItEasy.Core
             writer.WriteLine();
         }
 
-        private static void AppendCallList(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter, IOutputWriter writer)
+        private static void AppendCallList(IEnumerable<IFakeObjectCall> calls, CallWriter callWriter, StringBuilderOutputWriter writer)
         {
             using (writer.Indent())
             {
                 callWriter.WriteCalls(calls, writer);
             }
+        }
+
+        private string CreateExceptionMessage(
+            IEnumerable<IFakeObjectCall> calls, string callDescription, string callCountDescription, int matchedCallCount)
+        {
+            var writer = this.outputWriterFactory.Invoke();
+            writer.WriteLine();
+
+            using (writer.Indent())
+            {
+                AppendCallDescription(callDescription, writer);
+                AppendExpectation(calls, callCountDescription, matchedCallCount, writer);
+                AppendCallList(calls, this.callWriter, writer);
+                writer.WriteLine();
+            }
+
+            return writer.Builder.ToString();
         }
     }
 }

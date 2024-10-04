@@ -1,6 +1,8 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
+    using System;
     using System.Collections.Generic;
+    using FakeItEasy.Tests.TestHelpers;
     using Xunit;
 
     public class CollectionContainsTests
@@ -8,16 +10,16 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
     {
         protected override string ExpectedDescription => "sequence that contains the value 10";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
-                null,
-                new object[] { },
-                new object[] { null },
+                (object?)null,
+                Array.Empty<object>(),
+                new object?[] { null },
                 new object[] { 1, 2, 3, "foo", "bar" });
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
                 new object[] { 10 },
@@ -39,7 +41,7 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
             base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
-        protected override void CreateConstraint(IArgumentConstraintManager<IEnumerable<object>> scope)
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<IEnumerable<object>> scope)
         {
             scope.Contains(10);
         }

@@ -5,7 +5,6 @@ namespace FakeItEasy.Tests
     using System.Linq;
     using System.Linq.Expressions;
     using System.Reflection;
-    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions.Execution;
 
     public static class NullGuardedAssertion
@@ -18,17 +17,39 @@ namespace FakeItEasy.Tests
         /// <summary>
         /// Validates that calls are properly null guarded.
         /// </summary>
+        /// <seealso cref="BeNullGuarded"/>
         public class NullGuardedConstraint
         {
             private readonly Expression<Action> call;
-            private ConstraintState state;
+            private ConstraintState? state;
 
             internal NullGuardedConstraint(Expression<Action> call)
             {
-                Guard.AgainstNull(call, nameof(call));
+                Guard.AgainstNull(call);
                 this.call = call;
             }
 
+            /// <summary>
+            /// Validate a subject action to ensure that the method or constructor call it uses is null guarded.
+            /// </summary>
+            /// <remarks>
+            /// For the supplied call, iterates over all the provided arguments, and for each one that is not null,
+            /// invokes the call with the provided argument values, replacing that one argument with null.
+            /// If the call fails to throw a <see cref="NullReferenceException"/> naming the correct argument (including
+            /// throwing a different exception), the method is considered not to be null guarded properly.
+            /// Note that this means that supplying a null argument value means that the method may accept null
+            /// values for that argument. Since this null will be used for this value in all invocations, if the method
+            /// does mistakenly guard that parameter against having a null value, the method will fail the test.
+            /// </remarks>
+            /// <example>
+            ///   <code>
+            ///   Expression<Action> call1 = () => methodThatNullGuardsBothParameters("argument1", "argument2");
+            ///   call1.Should().BeNullGuarded();
+            ///
+            ///   Expression<Action> call2 = () => methodThatNullGuardsOnlyTheSeconParameter(null, "argument2");
+            ///   call2.Should().BeNullGuarded();
+            ///   </code>
+            /// </example>
             public void BeNullGuarded()
             {
                 var matches = this.Matches(this.call);
@@ -37,7 +58,7 @@ namespace FakeItEasy.Tests
                     return;
                 }
 
-                var builder = new StringBuilderOutputWriter();
+                var builder = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
                 this.WriteDescriptionTo(builder);
                 builder.WriteLine();
                 this.WriteActualValueTo(builder);
@@ -48,7 +69,7 @@ namespace FakeItEasy.Tests
             private static ConstraintState CreateCall(Expression<Action> methodCall)
             {
                 var methodExpression = methodCall.Body as MethodCallExpression;
-                if (methodExpression != null)
+                if (methodExpression is not null)
                 {
                     return new MethodCallConstraintState(methodExpression);
                 }
@@ -56,9 +77,9 @@ namespace FakeItEasy.Tests
                 return new ConstructorCallConstraintState((NewExpression)methodCall.Body);
             }
 
-            private static object GetValueProducedByExpression(Expression expression)
+            private static object? GetValueProducedByExpression(Expression expression)
             {
-                if (expression == null)
+                if (expression is null)
                 {
                     return null;
                 }
@@ -70,7 +91,7 @@ namespace FakeItEasy.Tests
             private void WriteDescriptionTo(StringBuilderOutputWriter builder)
             {
                 builder.Write("Expected calls to ");
-                this.state.WriteTo(builder);
+                this.state!.WriteTo(builder);
                 builder.Write(" to be null guarded.");
             }
 
@@ -79,7 +100,7 @@ namespace FakeItEasy.Tests
                 builder.Write(
                     "When called with the following arguments the method did not throw the appropriate exception:");
                 builder.WriteLine();
-                this.state.WriteFailingCallsDescriptions(builder);
+                this.state!.WriteFailingCallsDescriptions(builder);
             }
 
             private bool Matches(Expression<Action> expression)
@@ -91,7 +112,7 @@ namespace FakeItEasy.Tests
             private abstract class ConstraintState
             {
                 protected readonly IEnumerable<ArgumentInfo> ValidArguments;
-                private IEnumerable<CallThatShouldThrow> unguardedCalls;
+                private IEnumerable<CallThatShouldThrow>? unguardedCalls;
 
                 protected ConstraintState(IEnumerable<ArgumentInfo> arguments)
                 {
@@ -100,7 +121,7 @@ namespace FakeItEasy.Tests
 
                 protected abstract string CallDescription { get; }
 
-                private IEnumerable<object> ArgumentValues
+                private IEnumerable<object?> ArgumentValues
                 {
                     get { return this.ValidArguments.Select(x => x.Value); }
                 }
@@ -125,7 +146,7 @@ namespace FakeItEasy.Tests
                 {
                     using (builder.Indent())
                     {
-                        foreach (var call in this.unguardedCalls)
+                        foreach (var call in this.unguardedCalls!)
                         {
                             call.WriteFailingCallDescription(builder);
                             builder.WriteLine();
@@ -133,7 +154,7 @@ namespace FakeItEasy.Tests
                     }
                 }
 
-                protected static IEnumerable<ArgumentInfo> GetArgumentInfos(IEnumerable<Expression> callArgumentsValues, ParameterInfo[] callArguments)
+                protected static List<ArgumentInfo> GetArgumentInfos(IEnumerable<Expression> callArgumentsValues, ParameterInfo[] callArguments)
                 {
                     var result = new List<ArgumentInfo>();
                     int index = 0;
@@ -142,7 +163,7 @@ namespace FakeItEasy.Tests
                         result.Add(new ArgumentInfo()
                         {
                             ArgumentType = callArguments[index].ParameterType,
-                            Name = callArguments[index].Name,
+                            Name = callArguments[index].Name ?? $"argument {index} had no name",
                             Value = GetValueProducedByExpression(argument)
                         });
 
@@ -152,12 +173,12 @@ namespace FakeItEasy.Tests
                     return result;
                 }
 
-                protected abstract void PerformCall(object[] arguments);
+                protected abstract void PerformCall(object?[] arguments);
 
                 private static bool IsNullableType(Type type)
                 {
-                    return !type.GetTypeInformation().IsValueType ||
-                           (type.GetTypeInformation().IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>));
+                    return !type.IsValueType ||
+                           (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>));
                 }
 
                 private static void WriteArgumentList(StringBuilderOutputWriter builder, IEnumerable<ArgumentInfo> arguments)
@@ -183,7 +204,7 @@ namespace FakeItEasy.Tests
                     builder.Write(argument.Name);
                 }
 
-                private IEnumerable<CallThatShouldThrow> GetArgumentsForCallsThatAreNotProperlyNullGuarded()
+                private List<CallThatShouldThrow> GetArgumentsForCallsThatAreNotProperlyNullGuarded()
                 {
                     var result = new List<CallThatShouldThrow>();
 
@@ -200,7 +221,7 @@ namespace FakeItEasy.Tests
 
                             var nullException = ex.InnerException as ArgumentNullException;
                             if (nullException == null ||
-                                !callThatShouldThrow.ArgumentName.Equals(nullException.ParamName))
+                                callThatShouldThrow.ArgumentName != nullException.ParamName)
                             {
                                 result.Add(callThatShouldThrow);
                             }
@@ -210,27 +231,30 @@ namespace FakeItEasy.Tests
                     return result;
                 }
 
-                private IEnumerable<CallThatShouldThrow> GetArgumentPermutationsThatShouldThrow()
+                private List<CallThatShouldThrow> GetArgumentPermutationsThatShouldThrow()
                 {
                     var result = new List<CallThatShouldThrow>();
                     int index = 0;
 
                     foreach (var argument in this.ValidArguments)
                     {
-                        if (argument.Value != null && IsNullableType(argument.ArgumentType))
+                        if (argument.Value is not null && IsNullableType(argument.ArgumentType))
                         {
-                            var permutation = new CallThatShouldThrow
-                            {
-                                ArgumentName = argument.Name,
-                                Arguments = this.ArgumentValues.Take(index)
+                            result.Add(new CallThatShouldThrow(
+                            argument.Name,
+                            this.ArgumentValues.Take(index)
                                     .Concat(default(object))
                                     .Concat(this.ArgumentValues.Skip(index + 1))
-                                    .ToArray()
-                            };
-                            result.Add(permutation);
+                                    .ToArray()));
                         }
 
                         index++;
+                    }
+
+                    if (result.Count == 0)
+                    {
+                        throw new InvalidOperationException(
+                            "Provided call has no non-null nullable arguments, so there's nothing to check.");
                     }
 
                     return result;
@@ -242,18 +266,24 @@ namespace FakeItEasy.Tests
 
                     public Type ArgumentType { get; set; }
 
-                    public object Value { get; set; }
+                    public object? Value { get; set; }
                 }
 
                 private class CallThatShouldThrow
                 {
-                    private Exception thrown;
+                    private Exception? thrown;
 
-                    public string ArgumentName { get; set; }
+                    public CallThatShouldThrow(string argumentName, object?[] arguments)
+                    {
+                        this.ArgumentName = argumentName;
+                        this.Arguments = arguments;
+                    }
 
-                    public object[] Arguments { get; set; }
+                    public string ArgumentName { get; }
 
-                    public void SetThrownException(Exception value)
+                    public object?[] Arguments { get; }
+
+                    public void SetThrownException(Exception? value)
                     {
                         this.thrown = value;
                     }
@@ -282,22 +312,21 @@ namespace FakeItEasy.Tests
 
                     private void WriteFailReason(StringBuilderOutputWriter description)
                     {
-                        if (this.thrown == null)
+                        if (this.thrown is null)
                         {
                             description.Write("did not throw any exception.");
                         }
                         else
                         {
                             var argumentNullException = this.thrown as ArgumentNullException;
-                            if (argumentNullException != null)
+                            if (argumentNullException is not null)
                             {
                                 description.Write(
-                                    "threw ArgumentNullException with wrong argument name, it should be \"{0}\"."
-                                        .FormatInvariant(this.ArgumentName));
+                                    $"threw ArgumentNullException with wrong argument name, it should be {this.ArgumentName}.");
                             }
                             else
                             {
-                                description.Write("threw unexpected {0}.".FormatInvariant(this.thrown.GetType().FullName));
+                                description.Write($"threw unexpected {this.thrown.GetType()}.");
                             }
                         }
                     }
@@ -307,28 +336,24 @@ namespace FakeItEasy.Tests
             private class MethodCallConstraintState
                 : ConstraintState
             {
-                private readonly object target;
+                private readonly object? target;
                 private readonly MethodInfo method;
 
                 public MethodCallConstraintState(MethodCallExpression expression)
                     : base(GetExpressionArguments(expression))
                 {
                     this.method = expression.Method;
-                    this.target = NullGuardedConstraint.GetValueProducedByExpression(expression.Object);
+                    this.target = NullGuardedConstraint.GetValueProducedByExpression(expression.Object!);
                 }
 
-#if FEATURE_NETCORE_REFLECTION
-                protected override string CallDescription => this.method.DeclaringType.Name + "." + this.method.Name;
-#else
-                protected override string CallDescription => this.method.ReflectedType.Name + "." + this.method.Name;
-#endif
+                protected override string CallDescription => this.method.ReflectedType?.Name + "." + this.method.Name;
 
-                protected override void PerformCall(object[] arguments)
+                protected override void PerformCall(object?[] arguments)
                 {
                     this.method.Invoke(this.target, arguments);
                 }
 
-                private static IEnumerable<ArgumentInfo> GetExpressionArguments(MethodCallExpression expression)
+                private static List<ArgumentInfo> GetExpressionArguments(MethodCallExpression expression)
                 {
                     return ConstraintState.GetArgumentInfos(expression.Arguments, expression.Method.GetParameters());
                 }
@@ -342,23 +367,19 @@ namespace FakeItEasy.Tests
                 public ConstructorCallConstraintState(NewExpression expression)
                     : base(GetArgumentInfos(expression))
                 {
-                    this.constructorInfo = expression.Constructor;
+                    this.constructorInfo = expression.Constructor!;
                 }
 
-#if FEATURE_NETCORE_REFLECTION
-                protected override string CallDescription => this.constructorInfo.DeclaringType.FullName + ".ctor";
-#else
-                protected override string CallDescription => this.constructorInfo.ReflectedType.FullName + ".ctor";
-#endif
+                protected override string CallDescription => this.constructorInfo.ReflectedType + ".ctor";
 
-                protected override void PerformCall(object[] arguments)
+                protected override void PerformCall(object?[] arguments)
                 {
                     this.constructorInfo.Invoke(arguments);
                 }
 
-                private static IEnumerable<ArgumentInfo> GetArgumentInfos(NewExpression expression)
+                private static List<ArgumentInfo> GetArgumentInfos(NewExpression expression)
                 {
-                    return GetArgumentInfos(expression.Arguments, expression.Constructor.GetParameters());
+                    return GetArgumentInfos(expression.Arguments, expression.Constructor!.GetParameters());
                 }
             }
         }

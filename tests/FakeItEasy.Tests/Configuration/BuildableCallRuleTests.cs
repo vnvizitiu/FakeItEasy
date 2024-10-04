@@ -3,14 +3,14 @@ namespace FakeItEasy.Tests.Configuration
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
-#if FEATURE_NETCORE_REFLECTION
     using System.Reflection;
-#endif
     using FakeItEasy.Configuration;
     using FakeItEasy.Core;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
+
+    using static FakeItEasy.Tests.TestHelpers.ExpressionHelper;
 
     public class BuildableCallRuleTests
     {
@@ -32,7 +32,7 @@ namespace FakeItEasy.Tests.Configuration
 
             string StringReturn();
 
-            IHaveDifferentReturnValues SelfReturn();
+            DummyableClass DummyableReturn();
         }
 
         public static IEnumerable<object> DefaultReturnValueCases()
@@ -40,18 +40,18 @@ namespace FakeItEasy.Tests.Configuration
             return TestCases.FromProperties(
                 new
                 {
-                    MethodName = "IntReturn",
+                    Method = GetMethodInfo<IHaveDifferentReturnValues>(x => x.IntReturn()),
                     ExpectedReturnValue = (object)0
                 },
                 new
                 {
-                    MethodName = "StringReturn",
-                    ExpectedReturnValue = (object)null
+                    Method = GetMethodInfo<IHaveDifferentReturnValues>(x => x.StringReturn()),
+                    ExpectedReturnValue = (object)string.Empty
                 },
                 new
                 {
-                    MethodName = "SelfReturn",
-                    ExpectedReturnValue = (object)null
+                    Method = GetMethodInfo<IHaveDifferentReturnValues>(x => x.DummyableReturn()),
+                    ExpectedReturnValue = (object)A.Dummy<DummyableClass>()
                 });
         }
 
@@ -61,8 +61,8 @@ namespace FakeItEasy.Tests.Configuration
             // Arrange
             bool firstWasCalled = false;
             bool secondWasCalled = false;
-            this.rule.Actions.Add(x => firstWasCalled = true);
-            this.rule.Actions.Add(x => secondWasCalled = true);
+            this.rule.AddAction(x => firstWasCalled = true);
+            this.rule.AddAction(x => secondWasCalled = true);
 
             this.rule.UseApplicator(x => { });
 
@@ -78,10 +78,10 @@ namespace FakeItEasy.Tests.Configuration
         public void Apply_should_pass_the_call_to_specified_actions()
         {
             var call = A.Fake<IInterceptedFakeObjectCall>();
-            IFakeObjectCall passedCall = null;
+            IFakeObjectCall? passedCall = null;
 
             this.rule.UseApplicator(x => { });
-            this.rule.Actions.Add(x => passedCall = x);
+            this.rule.AddAction(x => passedCall = x);
 
             this.rule.Apply(call);
 
@@ -104,12 +104,12 @@ namespace FakeItEasy.Tests.Configuration
         public void Apply_should_set_ref_and_out_parameters_when_specified()
         {
             // Arrange
-            this.rule.OutAndRefParametersValueProducer = x => new object[] { 1, "foo" };
+            this.rule.SetOutAndRefParametersValueProducer(x => new object[] { 1, "foo" });
             this.rule.UseApplicator(x => { });
 
             var call = A.Fake<IInterceptedFakeObjectCall>();
 
-            A.CallTo(() => call.Method).Returns(typeof(IOutAndRef).GetMethod("OutAndRef"));
+            A.CallTo(() => call.Method).Returns(OutAndRefMethod);
 
             // Act
             this.rule.Apply(call);
@@ -122,11 +122,11 @@ namespace FakeItEasy.Tests.Configuration
         public void Apply_should_throw_when_OutAndRefParametersValues_length_differs_from_the_number_of_out_and_ref_parameters_in_the_call()
         {
             // Arrange
-            this.rule.OutAndRefParametersValueProducer = x => new object[] { 1, "foo", "bar" };
+            this.rule.SetOutAndRefParametersValueProducer(x => new object[] { 1, "foo", "bar" });
             this.rule.UseApplicator(x => { });
 
             var call = A.Fake<IInterceptedFakeObjectCall>();
-            A.CallTo(() => call.Method).Returns(typeof(IOutAndRef).GetMethod("OutAndRef"));
+            A.CallTo(() => call.Method).Returns(OutAndRefMethod);
 
             var exception = Record.Exception(() =>
                 this.rule.Apply(call));
@@ -137,11 +137,11 @@ namespace FakeItEasy.Tests.Configuration
 
         [Theory]
         [MemberData(nameof(DefaultReturnValueCases))]
-        public void Apply_should_set_return_value_to_default_value_when_applicator_is_not_set(string methodName, object expectedResponse)
+        public void Apply_should_set_return_value_to_default_value_when_applicator_is_not_set(MethodInfo method, object expectedResponse)
         {
             // Arrange
             var call = A.Fake<IInterceptedFakeObjectCall>();
-            A.CallTo(() => call.Method).Returns(typeof(IHaveDifferentReturnValues).GetMethod(methodName));
+            A.CallTo(() => call.Method).Returns(method);
 
             // Act
             this.rule.Apply(call);
@@ -162,7 +162,7 @@ namespace FakeItEasy.Tests.Configuration
             this.rule.ReturnValueFromOnIsApplicableTo = resultFromOnIsApplicableTo;
 
             // Act
-            var result = this.rule.IsApplicableTo(null);
+            var result = this.rule.IsApplicableTo(null!);
 
             // Assert
             result.Should().Be(expectedResult);
@@ -235,7 +235,7 @@ namespace FakeItEasy.Tests.Configuration
             // Arrange
             this.rule.DescriptionOfValidCallReturnValue = "description";
 
-            var writer = new StringBuilderOutputWriter();
+            var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
 
             // Act
             this.rule.WriteDescriptionOfValidCall(writer);
@@ -252,7 +252,7 @@ namespace FakeItEasy.Tests.Configuration
             this.rule.ApplyWherePredicate(x => true, x => x.Write("description of first where"));
             this.rule.ApplyWherePredicate(x => true, x => x.Write("description of second where"));
 
-            var descriptionWriter = new StringBuilderOutputWriter();
+            var descriptionWriter = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
 
             // Act
             this.rule.WriteDescriptionOfValidCall(descriptionWriter);
@@ -263,7 +263,7 @@ namespace FakeItEasy.Tests.Configuration
   where description of first where
   and description of second where";
 
-            descriptionWriter.Builder.ToString().Should().Be(expectedDescription);
+            descriptionWriter.Builder.ToString().Should().BeModuloLineEndings(expectedDescription);
         }
 
         [Fact]
@@ -278,10 +278,36 @@ namespace FakeItEasy.Tests.Configuration
         [Fact]
         public void OutAndRefParameterProducer_should_not_be_settable_more_than_once()
         {
-            this.rule.OutAndRefParametersValueProducer = x => new object[0];
+            this.rule.SetOutAndRefParametersValueProducer(x => Array.Empty<object>());
 
-            var exception = Record.Exception(() => this.rule.OutAndRefParametersValueProducer = x => new object[] { "test" });
+            var exception = Record.Exception(() => this.rule.SetOutAndRefParametersValueProducer(x => new object[] { "test" }));
             exception.Should().BeAnExceptionOfType<InvalidOperationException>();
+        }
+
+        private class DummyableClass
+        {
+        }
+
+        private static MethodInfo OutAndRefMethod
+        {
+            get
+            {
+                string s = string.Empty;
+                int i = 0;
+                var method = GetMethodInfo<IOutAndRef>(x => x.OutAndRef(new object(), out i, string.Empty, ref s, string.Empty));
+                return method;
+            }
+        }
+
+        [SuppressMessage("Microsoft.Performance", "CA1812:AvoidUninstantiatedInternalClasses", Justification = "This class is loaded dynamically as an extension point")]
+        private class DummyableClassFactory : DummyFactory<DummyableClass>
+        {
+            private static readonly DummyableClass Instance = new DummyableClass();
+
+            protected override DummyableClass Create()
+            {
+                return Instance;
+            }
         }
 
         private class TestableCallRule
@@ -299,7 +325,7 @@ namespace FakeItEasy.Tests.Configuration
 
             public bool OnIsApplicableToWasCalled { get; private set; }
 
-            public override string DescriptionOfValidCall => this.DescriptionOfValidCallReturnValue;
+            public override void DescribeCallOn(IOutputWriter writer) => writer.Write(this.DescriptionOfValidCallReturnValue);
 
             public override void UsePredicateToValidateArguments(Func<ArgumentCollection, bool> argumentsPredicate)
             {
@@ -309,6 +335,15 @@ namespace FakeItEasy.Tests.Configuration
             {
                 this.OnIsApplicableToWasCalled = true;
                 return this.ReturnValueFromOnIsApplicableTo;
+            }
+
+            protected override BuildableCallRule CloneCallSpecificationCore()
+            {
+                return new TestableCallRule
+                {
+                    ReturnValueFromOnIsApplicableTo = this.ReturnValueFromOnIsApplicableTo,
+                    DescriptionOfValidCallReturnValue = this.DescriptionOfValidCallReturnValue
+                };
             }
         }
     }

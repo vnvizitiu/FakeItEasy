@@ -3,39 +3,32 @@ namespace FakeItEasy.Tests.Configuration
     using System;
     using System.Collections;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.Linq;
     using System.Linq.Expressions;
-#if FEATURE_NETCORE_REFLECTION
-    using System.Reflection;
-#endif
     using FakeItEasy.Configuration;
     using FakeItEasy.Tests;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
+    using static FakeItEasy.Tests.TestHelpers.ExpressionHelper;
+
     public class ArgumentCollectionTests
     {
         [Fact]
         public void Constructor_is_properly_guarded()
         {
-            Expression<Action> call = () => new ArgumentCollection(new object[] { "foo", 1 }, new[] { "foo", "bar" });
-            call.Should().BeNullGuarded();
-        }
-
-        [Fact]
-        public void Constructor_that_takes_method_is_properly_null_guarded()
-        {
-            var method = typeof(IFoo).GetMethod("Bar", new[] { typeof(object), typeof(object) });
+            var method = GetMethodInfo<IFoo>(x => x.Bar(new object(), new object()));
+#pragma warning disable CA1806 // Do not ignore method results
             Expression<Action> call = () => new ArgumentCollection(new object[] { "foo", 1 }, method);
+#pragma warning restore CA1806 // Do not ignore method results
             call.Should().BeNullGuarded();
         }
 
         [Fact]
         public void Constructor_that_takes_method_should_set_argument_names()
         {
-            var method = typeof(IFoo).GetMethod("Bar", new[] { typeof(object), typeof(object) });
+            var method = GetMethodInfo<IFoo>(x => x.Bar(new object(), new object()));
 
             var arguments = new ArgumentCollection(new object[] { "foo", "bar" }, method);
 
@@ -46,7 +39,8 @@ namespace FakeItEasy.Tests.Configuration
         public void Constructor_should_throw_when_number_of_arguments_does_not_match_number_of_argument_names()
         {
             // act
-            var exception = Record.Exception(() => new ArgumentCollection(new object[] { 1, 2 }, new[] { "first", "second", "third" }));
+            var method = FakeMethodHelper.CreateFakeMethod(new[] { "first", "second", "third" });
+            var exception = Record.Exception(() => new ArgumentCollection(new object[] { 1, 2 }, method));
 
             // assert
             exception.Should().BeOfType<ArgumentException>();
@@ -90,7 +84,7 @@ namespace FakeItEasy.Tests.Configuration
         public void GetEnumerator_through_non_generic_interface_returns_enumerator_that_enumerates_all_arguments()
         {
             var arguments = this.CreateFakeArgumentList(new[] { "foo", "bar" }, 1, 2);
-            var found = new List<object>();
+            var found = new List<object?>();
 
             var enumerator = ((IEnumerable)arguments).GetEnumerator();
             while (enumerator.MoveNext())
@@ -109,31 +103,16 @@ namespace FakeItEasy.Tests.Configuration
             arguments.Should().Equal(1, 2, 3);
         }
 
-#if FEATURE_BINARY_SERIALIZATION
-        [Fact]
-        public void Should_be_serializable_when_arguments_are_equatable()
+        private ArgumentCollection CreateFakeArgumentList(string[] argumentNames, params object[] arguments)
         {
-            // Arrange
-            object collection = new ArgumentCollection(
-                new object[] { "first argument" },
-                typeof(string).GetMethod("Equals", new[] { typeof(string) }));
-
-            // Act
-
-            // Assert
-            collection.Should().BeBinarySerializable();
-        }
-#endif
-
-        private ArgumentCollection CreateFakeArgumentList(IEnumerable<string> argumentNames, params object[] arguments)
-        {
-            return new ArgumentCollection(arguments, argumentNames);
+            var method = FakeMethodHelper.CreateFakeMethod(argumentNames);
+            return new ArgumentCollection(arguments, method);
         }
 
         private ArgumentCollection CreateFakeArgumentList(params object[] arguments)
         {
             return this.CreateFakeArgumentList(
-                Enumerable.Range(0, arguments.Length).Select(x => x.ToString(CultureInfo.CurrentCulture)).ToArray(),
+                Enumerable.Range(0, arguments.Length).Select(x => x.ToString()).ToArray(),
                 arguments);
         }
     }

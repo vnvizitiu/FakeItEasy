@@ -1,6 +1,6 @@
 namespace FakeItEasy.Core
 {
-    using System.Reflection;
+    using System;
 
     /// <summary>
     /// A call rule that applies to any call and just delegates the
@@ -9,8 +9,6 @@ namespace FakeItEasy.Core
     internal class WrappedObjectRule
         : IFakeObjectCallRule
     {
-        private readonly object wrappedObject;
-
         /// <summary>
         /// Initializes a new instance of the <see cref="WrappedObjectRule"/> class.
         /// Creates a new instance.
@@ -20,15 +18,19 @@ namespace FakeItEasy.Core
         /// </param>
         public WrappedObjectRule(object wrappedInstance)
         {
-            this.wrappedObject = wrappedInstance;
+            this.WrappedObject = wrappedInstance;
         }
 
         /// <summary>
         /// Gets the number of times this call rule is valid, if it's set
         /// to null its infinitely valid.
         /// </summary>
-        /// <value></value>
         public int? NumberOfTimesToCall => null;
+
+        /// <summary>
+        /// Gets the wrapped object.
+        /// </summary>
+        public object WrappedObject { get; }
 
         /// <summary>
         /// Gets whether this interceptor is applicable to the specified
@@ -37,10 +39,7 @@ namespace FakeItEasy.Core
         /// </summary>
         /// <param name="fakeObjectCall">The call to check for applicability.</param>
         /// <returns>True if the interceptor is applicable.</returns>
-        public bool IsApplicableTo(IFakeObjectCall fakeObjectCall)
-        {
-            return true;
-        }
+        public bool IsApplicableTo(IFakeObjectCall fakeObjectCall) => true;
 
         /// <summary>
         /// Applies an action to the call, might set a return value or throw
@@ -49,21 +48,12 @@ namespace FakeItEasy.Core
         /// <param name="fakeObjectCall">The call to apply the interceptor to.</param>
         public void Apply(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
-
-            var parameters = fakeObjectCall.Arguments.GetUnderlyingArgumentsArray();
-            object valueFromWrappedInstance;
-            try
+            if (EventCall.TryGetEventCall(fakeObjectCall, out var eventCall) && eventCall.IsEventRaiser())
             {
-                valueFromWrappedInstance = fakeObjectCall.Method.Invoke(this.wrappedObject, parameters);
-            }
-            catch (TargetInvocationException ex)
-            {
-                ex.InnerException?.Rethrow();
-                throw;
+                throw new InvalidOperationException(ExceptionMessages.WrappingFakeCannotRaiseEvent);
             }
 
-            fakeObjectCall.SetReturnValue(valueFromWrappedInstance);
+            fakeObjectCall.CallWrappedMethod(this.WrappedObject);
         }
     }
 }

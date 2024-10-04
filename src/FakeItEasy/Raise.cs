@@ -11,7 +11,7 @@ namespace FakeItEasy
     public static class Raise
     {
         private static readonly EventHandlerArgumentProviderMap ArgumentProviderMap =
-            ServiceLocator.Current.Resolve<EventHandlerArgumentProviderMap>();
+            ServiceLocator.Resolve<EventHandlerArgumentProviderMap>();
 
         /// <summary>
         /// Raises an event on a faked object by attaching the event handler produced by the method
@@ -22,7 +22,7 @@ namespace FakeItEasy
         /// <param name="e">The <see cref="System.EventArgs"/> instance containing the event data.</param>
         /// <returns>A Raise(TEventArgs)-object that exposes the event handler to attach.</returns>
         [SuppressMessage("Microsoft.Security", "CA2109:ReviewVisibleEventHandlers", Justification = "Must be visible to provide the event raising syntax.")]
-        public static Raise<TEventArgs> With<TEventArgs>(object sender, TEventArgs e) where TEventArgs : EventArgs
+        public static Raise<TEventArgs> With<TEventArgs>(object? sender, TEventArgs e)
         {
             return new Raise<TEventArgs>(sender, e, ArgumentProviderMap);
         }
@@ -36,7 +36,7 @@ namespace FakeItEasy
         /// <returns>
         /// A Raise(TEventArgs)-object that exposes the event handler to attach.
         /// </returns>
-        public static Raise<TEventArgs> With<TEventArgs>(TEventArgs e) where TEventArgs : EventArgs
+        public static Raise<TEventArgs> With<TEventArgs>(TEventArgs e)
         {
             return new Raise<TEventArgs>(e, ArgumentProviderMap);
         }
@@ -54,14 +54,48 @@ namespace FakeItEasy
         }
 
         /// <summary>
-        /// Raises an event with non-standard signature.
+        /// Allows the developer to raise an event with a non-standard signature on a faked object.
+        /// Uses late binding, so requires a reference to Microsoft.CSharp when called from C#, and is not compatible
+        /// with all CLR languages (for example Visual Basic).
+        /// To raise non-standard events from other languages, use <see cref="Raise.FreeForm{TEventHandler}"/>.
         /// </summary>
-        /// <param name="arguments">The arguments to send to the event handlers.</param>
-        /// <typeparam name="TEventHandler">The type of the event handler. Should be a <see cref="Delegate"/></typeparam>
-        /// <returns>A new object that knows how to raise events.</returns>
-        public static TEventHandler With<TEventHandler>(params object[] arguments)
+#pragma warning disable CA1034 // Do not nest type
+        public static class FreeForm
+#pragma warning restore CA1034 // Do not nest type
         {
-            return new DelegateRaiser<TEventHandler>(arguments, ArgumentProviderMap);
+            /// <summary>
+            /// Raises an event with non-standard signature, resolving the actual delegate type dynamically.
+            /// </summary>
+            /// <param name="arguments">The arguments to send to the event handlers.</param>
+            /// <returns>A new object that knows how to raise events.</returns>
+            public static dynamic With(params object?[] arguments)
+            {
+                return new DynamicRaiser(arguments, ArgumentProviderMap);
+            }
+        }
+
+        /// <summary>
+        /// Allows the developer to raise an event with a non-standard signature on a faked object.
+        /// Intended to be used from languages, such as Visual Basic, that do not support late binding via dynamic
+        /// objects, or when a reference to Microsoft.CSharp is not desired.
+        /// Otherwise, prefer <see cref="Raise.FreeForm" />.
+        /// </summary>
+        /// <typeparam name="TEventHandler">The type of the event handler.</typeparam>
+#pragma warning disable CA1034 // Do not nest type
+        public static class FreeForm<TEventHandler> where TEventHandler : Delegate
+#pragma warning restore CA1034 // Do not nest type
+        {
+            /// <summary>
+            /// Raises an event with non-standard signature.
+            /// </summary>
+            /// <param name="arguments">The arguments to send to the event handlers.</param>
+            /// <returns>A new object that knows how to raise events.</returns>
+#pragma warning disable CA1000 // Do not declare static members on generic types
+            public static TEventHandler With(params object?[] arguments)
+#pragma warning restore CA1000 // Do not declare static members on generic types
+            {
+                return new DelegateRaiser<TEventHandler>(arguments, ArgumentProviderMap);
+            }
         }
     }
 }

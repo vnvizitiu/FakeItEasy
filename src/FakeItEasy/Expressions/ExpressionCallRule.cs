@@ -17,10 +17,11 @@ namespace FakeItEasy.Expressions
         /// <param name="expressionMatcher">The expression matcher to use.</param>
         public ExpressionCallRule(ExpressionCallMatcher expressionMatcher)
         {
-            Guard.AgainstNull(expressionMatcher, nameof(expressionMatcher));
+            Guard.AgainstNull(expressionMatcher);
 
             this.ExpressionMatcher = expressionMatcher;
-            this.SetOutAndRefParametersValueProducer(expressionMatcher.GetOutAndRefParametersValueProducer());
+            this.AddAction(this.ExpressionMatcher.PerformConstraintMatcherSideEffects);
+            this.OutAndRefParametersValueProducer = expressionMatcher.GetOutAndRefParametersValueProducer();
         }
 
         /// <summary>
@@ -30,29 +31,19 @@ namespace FakeItEasy.Expressions
         /// <returns>A rule instance.</returns>
         public delegate ExpressionCallRule Factory(ParsedCallExpression callSpecification);
 
-        public override string DescriptionOfValidCall => this.ExpressionMatcher.DescriptionOfMatchingCall;
-
         private ExpressionCallMatcher ExpressionMatcher { get; }
 
-        /// <summary>
-        /// Returns a <see cref="System.String"/> that represents this instance.
-        /// </summary>
-        /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
-        /// </returns>
-        public override string ToString()
-        {
-            return this.DescriptionOfValidCall;
-        }
+        public override void DescribeCallOn(IOutputWriter writer) => this.ExpressionMatcher.DescribeCallOn(writer);
 
         public override void UsePredicateToValidateArguments(Func<ArgumentCollection, bool> argumentsPredicate)
         {
             this.ExpressionMatcher.UsePredicateToValidateArguments(argumentsPredicate);
         }
 
-        protected override bool OnIsApplicableTo(IFakeObjectCall fakeObjectCall)
-        {
-            return this.ExpressionMatcher.Matches(fakeObjectCall);
-        }
+        protected override bool OnIsApplicableTo(IFakeObjectCall fakeObjectCall) =>
+            this.ExpressionMatcher.Matches(fakeObjectCall);
+
+        protected override BuildableCallRule CloneCallSpecificationCore() =>
+            new ExpressionCallRule(this.ExpressionMatcher);
     }
 }

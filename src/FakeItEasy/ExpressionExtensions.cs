@@ -1,6 +1,6 @@
 namespace FakeItEasy
 {
-    using System.Linq;
+    using System;
     using System.Linq.Expressions;
     using System.Reflection;
 
@@ -14,13 +14,18 @@ namespace FakeItEasy
         /// </summary>
         /// <notes>
         /// This method evaluates an expression, but tries to do it in a light-weight way that doesn't compile it into a delegate.
-        /// It is often used to solve 'what object/value does the user-supplied Expression refer to?'
+        /// It is often used to determine what object/value the user-supplied Expression refers to.
         /// </notes>
         /// <param name="expression">The expression to be evaluated.</param>
         /// <returns>The value returned from the delegate compiled from the expression.</returns>
-        public static object Evaluate(this Expression expression)
+        public static object? Evaluate(this Expression expression)
         {
-            return EvaluateOptimized(expression);
+            if (TryFastEvaluate(expression, out object? result))
+            {
+                return result;
+            }
+
+            return Expression.Lambda(expression).Compile().DynamicInvoke();
         }
 
         // About the optimizations:
@@ -36,33 +41,50 @@ namespace FakeItEasy
         //     A<SomethingA>.Ignored
         //     A<SomethingA>._
         //     myObj.someProperty
-        // - trivial method calls with no arguments (A.ToString(), B.GetType(), Factory.Create())
-        private static object EvaluateOptimized(this Expression expression)
+        // - method calls
+        // - array creation (including params arrays)
+        // - quoted expressions
+        private static bool TryFastEvaluate(Expression? expression, out object? result)
         {
-            if (expression == null)
+            result = null;
+
+            if (expression is null)
             {
-                return null;
+                return true;
             }
 
             switch (expression.NodeType)
             {
                 case ExpressionType.Constant:
-                    return ((ConstantExpression)expression).Value;
+                    result = ((ConstantExpression)expression).Value;
+                    return true;
 
                 case ExpressionType.MemberAccess:
                     var memberExpression = (MemberExpression)expression;
 
                     var fieldInfo = memberExpression.Member as FieldInfo;
-                    if (fieldInfo != null)
+                    if (fieldInfo is not null)
                     {
-                        return fieldInfo.GetValue(EvaluateOptimized(memberExpression.Expression));
+                        if (TryFastEvaluate(memberExpression.Expression, out object? memberResult))
+                        {
+                            result = fieldInfo.GetValue(memberResult);
+                            return true;
+                        }
+
+                        return false;
                     }
 
                     var propertyInfo = memberExpression.Member as PropertyInfo;
-                    if (propertyInfo != null)
+                    if (propertyInfo is not null)
                     {
                         // index = null: this is always fine since it's a MemberAccess expression, not an IndexExpression
-                        return propertyInfo.GetValue(EvaluateOptimized(memberExpression.Expression), null);
+                        if (TryFastEvaluate(memberExpression.Expression, out object? memberResult))
+                        {
+                            result = propertyInfo.GetValue(memberResult, null);
+                            return true;
+                        }
+
+                        return false;
                     }
 
                     break;
@@ -70,34 +92,63 @@ namespace FakeItEasy
                 case ExpressionType.Call:
                     var callExpression = (MethodCallExpression)expression;
 
-                    // for now, handling only very trivial call expressions with no arguments, like 'GetBlarg()'
-                    // because anything else might get complicated quickly (method overloads etc.)
-                    if (!callExpression.Arguments.Any())
+                    if (!TryFastEvaluate(callExpression.Object, out object? target))
                     {
-                        var targetObject = EvaluateOptimized(callExpression.Object);
-                        return callExpression.Method.Invoke(targetObject, null);
+                        return false;
                     }
 
-                    break;
+                    var argumentValues = new object?[callExpression.Arguments.Count];
+                    for (int i = 0; i < callExpression.Arguments.Count; i++)
+                    {
+                        if (!TryFastEvaluate(callExpression.Arguments[i], out argumentValues[i]))
+                        {
+                            return false;
+                        }
+                    }
+
+                    result = callExpression.Method.Invoke(target, argumentValues);
+                    return true;
 
                 case ExpressionType.Convert:
-                    var unaryExpression = (UnaryExpression)expression;
+                    var convertExpression = (UnaryExpression)expression;
 
                     // for now, handling only 'boxing/casting to object' expressions like '3' used as an argument to a function which takes an object[] array parameter.
-                    if (unaryExpression.Type == typeof(object))
+                    if (convertExpression.Type == typeof(object))
                     {
                         // in principle, we would first evaluate it without the boxing, and then box/cast to object...
-                        // ...but EvaluateOptimized already boxes before returning, so no explicit cast needed.
-                        object obj = EvaluateOptimized(unaryExpression.Operand); // declaring an explicitly typed variable to ensure we're really boxing
-                        return obj;
+                        // ...but TryFastEvaluate already boxes before returning, so no explicit cast needed.
+                        return TryFastEvaluate(convertExpression.Operand, out result);
                     }
 
                     break;
+
+                case ExpressionType.NewArrayInit:
+                    var newArrayExpression = (NewArrayExpression)expression;
+                    var arrayItems = Array.CreateInstance(newArrayExpression.Type.GetElementType()!, newArrayExpression.Expressions.Count);
+
+                    for (int i = 0; i < newArrayExpression.Expressions.Count; i++)
+                    {
+                        if (!TryFastEvaluate(newArrayExpression.Expressions[i], out object? item))
+                        {
+                            return false;
+                        }
+
+                        arrayItems.SetValue(item, i);
+                    }
+
+                    result = arrayItems;
+                    return true;
+
+                case ExpressionType.Quote:
+                    // We've wrapped an expression inside another expression. This should mean that the inner
+                    // expression is the desired result.
+                    var quoteExpression = (UnaryExpression)expression;
+
+                    result = quoteExpression.Operand;
+                    return true;
             }
 
-            // when we didn't know how to evaluate the tree, fall back to compiling into a delegate and invoking the expression
-            var lambda = Expression.Lambda(expression).Compile();
-            return lambda.DynamicInvoke();
+            return false;
         }
     }
 }

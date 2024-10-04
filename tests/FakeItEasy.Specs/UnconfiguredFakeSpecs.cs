@@ -126,7 +126,7 @@ namespace FakeItEasy.Specs
         [Scenario]
         public static void FakeableProperty(
             FakedClass fake,
-            IFoo result)
+            IFoo? result)
         {
             "Given a type with a virtual fakeable-type property"
                 .x(() => { }); // see FakedClasss
@@ -137,8 +137,53 @@ namespace FakeItEasy.Specs
             "When I get the property value"
                 .x(() => result = fake.FakeableProperty);
 
-            "Then the value will be a Dummy"
-                .x(() => result.IsADummy.Should().BeTrue("because the property value should be a Dummy"));
+            "Then the property will not be null"
+                .x(() => result.Should().NotBeNull());
+
+            "And it will be a Dummy"
+                .x(() => result!.IsADummy.Should().BeTrue("because the property value should be a Dummy"));
+        }
+
+        [Scenario]
+        public static void ToStringDescribesFake(FakedClass fake, string? toStringValue)
+        {
+            "Given a faked class instance"
+                .x(() => fake = A.Fake<FakedClass>());
+
+            "When I call ToString on it"
+                .x(() => toStringValue = fake.ToString());
+
+            "Then it indicates that it's a fake"
+                .x(() => toStringValue.Should().Be("Faked FakeItEasy.Specs.UnconfiguredFakeSpecs+FakedClass"));
+        }
+
+        [Scenario]
+        public static void EqualsSameFake(FakedClass fake, bool equalsResult)
+        {
+            "Given a faked class instance"
+                .x(() => fake = A.Fake<FakedClass>());
+
+            "When I compare it to itself using Equals"
+                .x(() => equalsResult = fake.Equals(fake));
+
+            "Then it compares as equal"
+                .x(() => equalsResult.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void EqualsDifferentInstanceOfSameFakedType(FakedClass fake1, FakedClass fake2, bool equalsResult)
+        {
+            "Given a faked class instance"
+                .x(() => fake1 = A.Fake<FakedClass>());
+
+            "And a second faked class instance of the same type"
+                .x(() => fake2 = A.Fake<FakedClass>());
+
+            "When I compare the instances using Equals"
+                .x(() => equalsResult = fake1.Equals(fake2));
+
+            "Then they compare as unequal"
+                .x(() => equalsResult.Should().BeFalse());
         }
 
         public class FakedClass
@@ -155,22 +200,25 @@ namespace FakeItEasy.Specs
 
             public virtual string StringProperty { get; set; }
 
-            public string StringPropertyValueDuringConstructorCall { get; }
+            public string? StringPropertyValueDuringConstructorCall { get; }
 
             public virtual int ValueTypeProperty { get; set; }
 
             public int ValueTypePropertyValueDuringConstructorCall { get; }
 
-            public virtual IFoo FakeableProperty { get; set; }
+            public virtual IFoo? FakeableProperty { get; set; }
         }
 
-        public class FooFactory : DummyFactory<IFoo>, IFoo
+        public class Foo : IFoo
         {
             public bool IsADummy { get; set; }
+        }
 
+        public class FooFactory : DummyFactory<IFoo>
+        {
             protected override IFoo Create()
             {
-                return new FooFactory { IsADummy = true };
+                return new Foo { IsADummy = true };
             }
         }
     }

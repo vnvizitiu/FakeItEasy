@@ -2,25 +2,28 @@ namespace FakeItEasy
 {
     using System;
     using System.Diagnostics.CodeAnalysis;
+    using FakeItEasy.Core;
 
     internal class DefaultOutputWriter
         : IOutputWriter
     {
         private const string IndentString = "  ";
         private readonly Action<char> output;
+        private readonly ArgumentValueFormatter argumentValueFormatter;
         private string currentIndent;
         private WriteState writerState;
 
-        public DefaultOutputWriter(Action<char> output)
+        public DefaultOutputWriter(Action<char> output, ArgumentValueFormatter argumentValueFormatter)
         {
             this.output = output;
+            this.argumentValueFormatter = argumentValueFormatter;
             this.currentIndent = string.Empty;
             this.writerState = new DefaultWriterState(this);
         }
 
         public IOutputWriter Write(string value)
         {
-            Guard.AgainstNull(value, nameof(value));
+            Guard.AgainstNull(value);
 
             foreach (var character in value)
             {
@@ -30,31 +33,9 @@ namespace FakeItEasy
             return this;
         }
 
-        public IOutputWriter WriteArgumentValue(object value)
+        public IOutputWriter WriteArgumentValue(object? value)
         {
-            if (value == null)
-            {
-                this.Write("NULL");
-                return this;
-            }
-
-            var stringValue = value as string;
-            if (stringValue != null)
-            {
-                if (stringValue.Length == 0)
-                {
-                    this.Write("string.Empty");
-                }
-                else
-                {
-                    this.Write("\"").Write(stringValue).Write("\"");
-                }
-
-                return this;
-            }
-
-            this.Write(value.ToString());
-            return this;
+            return this.Write(this.argumentValueFormatter.GetArgumentValueAsString(value));
         }
 
         [SuppressMessage("Microsoft.Reliability", "CA2000:Dispose objects before losing scope", Justification = "Not critical that dispose runs in all exception paths.")]
@@ -93,12 +74,12 @@ namespace FakeItEasy
 
         private abstract class WriteState
         {
-            protected readonly DefaultOutputWriter Writer;
-
             public WriteState(DefaultOutputWriter writer)
             {
                 this.Writer = writer;
             }
+
+            protected DefaultOutputWriter Writer { get; }
 
             public abstract void Write(char c);
         }

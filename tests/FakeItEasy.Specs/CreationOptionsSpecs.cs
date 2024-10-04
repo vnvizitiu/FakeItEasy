@@ -5,9 +5,8 @@ namespace FakeItEasy.Specs
     using System.Diagnostics;
     using System.Diagnostics.CodeAnalysis;
     using System.Linq;
-    using System.Reflection.Emit;
+    using System.Reflection;
     using FakeItEasy.Creation;
-    using FakeItEasy.Tests;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xbehave;
@@ -15,6 +14,11 @@ namespace FakeItEasy.Specs
 
     public abstract class CreationOptionsSpecsBase
     {
+        [SuppressMessage("Microsoft.Design", "CA1040:AvoidEmptyInterfaces", Justification = "It's just used for testing.")]
+        public interface IInterfaceType
+        {
+        }
+
         [SuppressMessage("Microsoft.Design", "CA1040:AvoidEmptyInterfaces", Justification = "It's just used for testing.")]
         public interface IInterfaceThatWeWillAddAttributesTo1
         {
@@ -28,6 +32,13 @@ namespace FakeItEasy.Specs
         [SuppressMessage("Microsoft.Design", "CA1040:AvoidEmptyInterfaces", Justification = "It's just used for testing.")]
         public interface IInterfaceThatWeWillAddAttributesTo3
         {
+        }
+
+        public interface IFakeCreator
+        {
+            Type FakeType { get; }
+
+            object CreateFake(Action<IFakeOptions> optionsBuilder, CreationOptionsSpecsBase testRunner);
         }
 
         [Scenario]
@@ -370,7 +381,7 @@ namespace FakeItEasy.Specs
                 .x(() => fake.ExceptionFromVirtualMethodCallInConstructor
                     .Should()
                     .BeAnExceptionOfType<ExpectationException>()
-                    .WithMessage("Call to non configured method \"VirtualMethod\" of strict fake."));
+                    .WithMessage("Call to unconfigured method of strict fake: *VirtualMethod*"));
         }
 
         [Scenario]
@@ -393,7 +404,7 @@ namespace FakeItEasy.Specs
                 .x(() => exception
                     .Should()
                     .BeAnExceptionOfType<ExpectationException>()
-                    .WithMessage("Call to non configured method \"VirtualMethod\" of strict fake."));
+                    .WithMessage("Call to unconfigured method of strict fake: *VirtualMethod*"));
         }
 
         [Scenario]
@@ -417,7 +428,7 @@ namespace FakeItEasy.Specs
                 .x(() => exception
                     .Should()
                     .BeAnExceptionOfType<ExpectationException>()
-                    .WithMessage("Call to non configured method \"VirtualMethod\" of strict fake."));
+                    .WithMessage("Call to unconfigured method of strict fake: *VirtualMethod*"));
         }
 
         [Scenario]
@@ -442,7 +453,7 @@ namespace FakeItEasy.Specs
                 .x(() => exception
                     .Should()
                     .BeAnExceptionOfType<ExpectationException>()
-                    .WithMessage("Call to non configured method \"VirtualMethod\" of strict fake."));
+                    .WithMessage("Call to unconfigured method of strict fake: *VirtualMethod*"));
         }
 
         [Scenario]
@@ -466,7 +477,7 @@ namespace FakeItEasy.Specs
                 .x(() => exception
                     .Should()
                     .BeAnExceptionOfType<ExpectationException>()
-                    .WithMessage("Call to non configured method \"VirtualMethod\" of strict fake."));
+                    .WithMessage("Call to unconfigured method of strict fake: *VirtualMethod*"));
         }
 
         [Scenario]
@@ -621,16 +632,21 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
+        [MemberData(nameof(SupportedTypes))]
         public void Implements(
-            MakesVirtualCallInConstructor fake,
-            Action<IFakeOptions<MakesVirtualCallInConstructor>> optionsBuilder)
+            IFakeCreator fakeCreator,
+            Action<IFakeOptions> optionsBuilder,
+            object fake)
         {
-            "Given an explicit options builder that makes a fake implement an interface"
+            "Given a type to fake"
+                .See(() => fakeCreator.FakeType.ToString());
+
+            "And an explicit options builder that makes a fake implement an interface"
                 .x(() => optionsBuilder = options => options
                     .Implements(typeof(IDisposable)));
 
-            "When I create a fake using the options builder"
-                .x(() => fake = this.CreateFake(optionsBuilder));
+            "When I create the fake using the options builder"
+                .x(() => fake = fakeCreator.CreateFake(optionsBuilder, this));
 
             "Then it implements the interface"
                 .x(() => fake.Should().BeAssignableTo<IDisposable>());
@@ -650,7 +666,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws an argument exception"
                 .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                    .WithMessage("*The specified type 'System.String' is not an interface*"));
+                    .WithMessage("*The specified type System.String is not an interface*"));
         }
 
         [Scenario]
@@ -661,7 +677,7 @@ namespace FakeItEasy.Specs
             "Given an explicit options builder that makes a fake implement two interfaces"
                 .x(() => optionsBuilder = options => options
                     .Implements(typeof(IComparable))
-                    .Implements(typeof(ICloneable)));
+                    .Implements(typeof(IDisposable)));
 
             "When I create a fake using the options builder"
                 .x(() => fake = this.CreateFake(optionsBuilder));
@@ -670,23 +686,19 @@ namespace FakeItEasy.Specs
                 .x(() => fake.Should().BeAssignableTo<IComparable>());
 
             "And it implements the second interface"
-                .x(() => fake.Should().BeAssignableTo<ICloneable>());
+                .x(() => fake.Should().BeAssignableTo<IDisposable>());
         }
 
         [Scenario]
-        public void WithAdditionalAttributes(
+        public void WithAttributes(
             IInterfaceThatWeWillAddAttributesTo1 fake,
             Action<IFakeOptions<IInterfaceThatWeWillAddAttributesTo1>> optionsBuilder)
         {
             "Given an explicit options builder that adds an attribute to a fake"
                 .x(() =>
                 {
-                    var constructor = typeof(ForTestAttribute).GetConstructor(new Type[0]);
-                    var attribute = new CustomAttributeBuilder(constructor, new object[0]);
-                    var customAttributeBuilders = new List<CustomAttributeBuilder> { attribute };
-
                     optionsBuilder = options => options
-                        .WithAdditionalAttributes(customAttributeBuilders);
+                        .WithAttributes(() => new ForTestAttribute());
                 });
 
             "When I create a fake using the options builder"
@@ -698,42 +710,32 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void WithAdditionalAttributesAndNullSetOfAttributes(
+        public void WithAttributesAndNullSetOfAttributes(
             Action<IFakeOptions<IInterfaceThatWeWillAddAttributesTo2>> optionsBuilder,
             Exception exception)
         {
             "Given an explicit options builder that adds a null attribute to a fake"
-                .x(() => optionsBuilder = options => options.WithAdditionalAttributes(null));
+                .x(() => optionsBuilder = options => options.WithAttributes(null!));
 
             "When I create a fake using the options builder"
                 .x(() => exception = Record.Exception(() => this.CreateFake(optionsBuilder)));
 
             "Then it throws an argument null exception"
                 .x(() => exception.Should().BeAnExceptionOfType<ArgumentNullException>()
-                             .WithMessage("*customAttributeBuilders*"));
+                    .WithMessage("*attributes*"));
         }
 
         [Scenario]
-        public void MultipleWithAdditionalAttributesConfigurations(
+        public void MultipleWithAttributesConfigurations(
             IInterfaceThatWeWillAddAttributesTo3 fake,
             Action<IFakeOptions<IInterfaceThatWeWillAddAttributesTo3>> optionsBuilder)
         {
             "Given an explicit options builder that adds multiple attributes to a fake"
                 .x(() =>
                 {
-                    var constructor1 = typeof(ScenarioAttribute).GetConstructor(new Type[0]);
-                    var attribute1 = new CustomAttributeBuilder(constructor1, new object[0]);
-                    var customAttributeBuilders1 = new List<CustomAttributeBuilder> { attribute1 };
-
-                    var constructor2 = typeof(ExampleAttribute).GetConstructor(new[] { typeof(object[]) });
-                    var attribute2 = new CustomAttributeBuilder(constructor2, new object[] { new object[] { 1, null } });
-                    var constructor3 = typeof(DebuggerStepThroughAttribute).GetConstructor(new Type[0]);
-                    var attribute3 = new CustomAttributeBuilder(constructor3, new object[0]);
-                    var customAttributeBuilders2 = new List<CustomAttributeBuilder> { attribute2, attribute3 };
-
                     optionsBuilder = options => options
-                        .WithAdditionalAttributes(customAttributeBuilders1)
-                        .WithAdditionalAttributes(customAttributeBuilders2);
+                        .WithAttributes(() => new ScenarioAttribute())
+                        .WithAttributes(() => new ExampleAttribute(), () => new DebuggerStepThroughAttribute());
                 });
 
             "When I create a fake using the options builder"
@@ -745,6 +747,68 @@ namespace FakeItEasy.Specs
                     .Contain(typeof(ScenarioAttribute)).And
                     .Contain(typeof(ExampleAttribute)).And
                     .Contain(typeof(DebuggerStepThroughAttribute)));
+        }
+
+        [Scenario]
+        public void WithSameAttributes(
+            IInterfaceThatWeWillAddAttributesTo1 fake1,
+            IInterfaceThatWeWillAddAttributesTo1 fake2,
+            Action<IFakeOptions<IInterfaceThatWeWillAddAttributesTo1>> optionsBuilder)
+        {
+            "Given an explicit options builder that adds an attribute to a fake"
+                .x(() => optionsBuilder = options => options.WithAttributes(() => new ForTestAttribute()));
+
+            "When I create a fake using the options builder"
+                .x(() => fake1 = this.CreateFake(optionsBuilder));
+
+            "And another fake with the same options builder"
+                .x(() => fake2 = this.CreateFake(optionsBuilder));
+
+            "Then the fakes have the same type"
+                .x(() => fake1.GetType().Should().Be(fake2.GetType()));
+
+            "And the first fake should have the attribute"
+                .x(() => fake1.GetType().GetCustomAttributes(inherit: false)
+                    .Select(a => a.GetType())
+                    .Should().Contain(typeof(ForTestAttribute)));
+
+            "And the second fake should have the attribute"
+                .x(() => fake2.GetType().GetCustomAttributes(inherit: false)
+                    .Select(a => a.GetType())
+                    .Should().Contain(typeof(ForTestAttribute)));
+        }
+
+        [Scenario]
+        public void WithDifferentAttributes(
+            IInterfaceThatWeWillAddAttributesTo1 fake1,
+            IInterfaceThatWeWillAddAttributesTo1 fake2,
+            Action<IFakeOptions<IInterfaceThatWeWillAddAttributesTo1>> optionsBuilder1,
+            Action<IFakeOptions<IInterfaceThatWeWillAddAttributesTo1>> optionsBuilder2)
+        {
+            "Given an explicit options builder that adds an attribute to a fake"
+                .x(() => optionsBuilder1 = options => options.WithAttributes(() => new ForTestAttribute()));
+
+            "And another explicit options builder that adds another attribute to a fake"
+                .x(() => optionsBuilder2 = options => options.WithAttributes(() => new DebuggerStepThroughAttribute()));
+
+            "When I create a fake using the first options builder"
+                .x(() => fake1 = this.CreateFake(optionsBuilder1));
+
+            "And another fake using the second options builder"
+                .x(() => fake2 = this.CreateFake(optionsBuilder2));
+
+            "Then the fakes have different types"
+                .x(() => fake1.GetType().Should().NotBe(fake2.GetType()));
+
+            "And the first fake should have the first attribute"
+                .x(() => fake1.GetType().GetCustomAttributes(inherit: false)
+                    .Select(a => a.GetType())
+                    .Should().Contain(typeof(ForTestAttribute)));
+
+            "And the second fake should have the second attribute"
+                .x(() => fake2.GetType().GetCustomAttributes(inherit: false)
+                    .Select(a => a.GetType())
+                    .Should().Contain(typeof(DebuggerStepThroughAttribute)));
         }
 
         [Scenario]
@@ -843,7 +907,31 @@ namespace FakeItEasy.Specs
                 .WithMessage("*Only expression of the type ExpressionType.New (constructor calls) are accepted.*"));
         }
 
-        protected abstract T CreateFake<T>(Action<IFakeOptions<T>> optionsBuilder);
+        protected abstract T CreateFake<T>(Action<IFakeOptions<T>> optionsBuilder) where T : class;
+
+        private static IEnumerable<object?[]> SupportedTypes()
+        {
+            return TestCases.FromObject(
+                new FakeCreator<IInterfaceType>(),
+                new FakeCreator<AbstractClass>(),
+                new FakeCreator<ClassWithProtectedConstructor>(),
+                new FakeCreator<ClassWithInternalConstructorVisibleToDynamicProxy>(),
+                new FakeCreator<InternalClassVisibleToDynamicProxy>());
+        }
+
+        private sealed class FakeCreator<TFake> : IFakeCreator where TFake : class
+        {
+            public Type FakeType => typeof(TFake);
+
+            public object CreateFake(Action<IFakeOptions> optionsBuilder, CreationOptionsSpecsBase testRunner)
+            {
+                return testRunner.CreateFake((Action<IFakeOptions<TFake>>)TypedOptionsBuilder);
+
+                void TypedOptionsBuilder(IFakeOptions<TFake> options) => optionsBuilder((IFakeOptions)options);
+            }
+
+            public override string ToString() => typeof(TFake).Name;
+        }
     }
 
     public class GenericCreationOptionsSpecs : CreationOptionsSpecsBase
@@ -871,9 +959,20 @@ namespace FakeItEasy.Specs
             this.virtualMethodReturnValue = virtualMethodReturnValue;
         }
 
-        public override string VirtualMethod(string parameter)
+        public override string VirtualMethod(string? parameter)
         {
             return this.virtualMethodReturnValue;
+        }
+    }
+
+    public abstract class AbstractClass
+    {
+    }
+
+    public class ClassWithProtectedConstructor
+    {
+        protected ClassWithProtectedConstructor()
+        {
         }
     }
 }

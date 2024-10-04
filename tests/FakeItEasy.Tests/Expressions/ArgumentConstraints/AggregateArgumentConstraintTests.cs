@@ -1,8 +1,8 @@
 namespace FakeItEasy.Tests.Expressions.ArgumentConstraints
 {
     using System.Collections.Generic;
-    using System.Text;
     using FakeItEasy.Expressions.ArgumentConstraints;
+    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
@@ -11,7 +11,11 @@ namespace FakeItEasy.Tests.Expressions.ArgumentConstraints
     {
         public AggregateArgumentConstraintTests()
         {
-            this.ConstraintField = new AggregateArgumentConstraint(new[] { new EqualityArgumentConstraint("foo"), new EqualityArgumentConstraint("bar") });
+            this.Constraint = new AggregateArgumentConstraint(new[]
+                {
+                    EqualityArgumentConstraint.FromExpectedValue("foo"),
+                    EqualityArgumentConstraint.FromExpectedValue("bar")
+                });
         }
 
         public interface ITypeWithMethod
@@ -21,7 +25,7 @@ namespace FakeItEasy.Tests.Expressions.ArgumentConstraints
 
         protected override string ExpectedDescription => "[\"foo\", \"bar\"]";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
                 new object(),
@@ -30,7 +34,7 @@ namespace FakeItEasy.Tests.Expressions.ArgumentConstraints
                 new[] { "foo", "bar", "biz" });
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
                 new[] { "foo", "bar" },
@@ -54,11 +58,11 @@ namespace FakeItEasy.Tests.Expressions.ArgumentConstraints
         [Fact]
         public override void Constraint_should_provide_correct_description()
         {
-            var output = new StringBuilder();
+            var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
 
-            this.ConstraintField.WriteDescription(new StringBuilderOutputWriter(output));
+            this.Constraint.WriteDescription(writer);
 
-            output.ToString().Should().Be(this.ExpectedDescription);
+            writer.Builder.ToString().Should().Be(this.ExpectedDescription);
         }
     }
 }

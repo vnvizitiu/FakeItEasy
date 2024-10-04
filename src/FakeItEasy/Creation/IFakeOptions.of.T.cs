@@ -4,20 +4,19 @@ namespace FakeItEasy.Creation
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
     using System.Linq.Expressions;
-    using System.Reflection.Emit;
 
     /// <summary>
     /// Provides options for generating fake object.
     /// </summary>
     /// <typeparam name="T">The type of fake object generated.</typeparam>
-    public interface IFakeOptions<T> : IHideObjectMembers
+    public interface IFakeOptions<T> : IHideObjectMembers where T : class
     {
         /// <summary>
         /// Specifies arguments for the constructor of the faked class.
         /// </summary>
         /// <param name="argumentsForConstructor">The arguments to pass to the constructor of the faked class.</param>
         /// <returns>Options object.</returns>
-        IFakeOptions<T> WithArgumentsForConstructor(IEnumerable<object> argumentsForConstructor);
+        IFakeOptions<T> WithArgumentsForConstructor(IEnumerable<object?> argumentsForConstructor);
 
         /// <summary>
         /// Specifies arguments for the constructor of the faked class by giving an expression with the call to
@@ -33,14 +32,14 @@ namespace FakeItEasy.Creation
         /// </summary>
         /// <param name="wrappedInstance">The object to delegate calls to.</param>
         /// <returns>Options object.</returns>
-        IFakeOptionsForWrappers<T> Wrapping(T wrappedInstance);
+        IFakeOptions<T> Wrapping(T wrappedInstance);
 
         /// <summary>
         /// Specifies that the fake should be created with these additional attributes.
         /// </summary>
-        /// <param name="customAttributeBuilders">The attributes to build into the proxy.</param>
+        /// <param name="attributes">Expressions that create attributes to add to the proxy.</param>
         /// <returns>Options object.</returns>
-        IFakeOptions<T> WithAdditionalAttributes(IEnumerable<CustomAttributeBuilder> customAttributeBuilders);
+        IFakeOptions<T> WithAttributes(params Expression<Func<Attribute>>[] attributes);
 
         /// <summary>
         /// Sets up the fake to implement the specified interface in addition to the
@@ -79,5 +78,12 @@ namespace FakeItEasy.Creation
         /// </para>
         /// </remarks>
         IFakeOptions<T> ConfigureFake(Action<T> action);
+
+        /// <summary>
+        /// Specifies the name of the fake, by which it will be referred to in error messages.
+        /// </summary>
+        /// <param name="name">The name of the fake.</param>
+        /// <returns>Options object.</returns>
+        IFakeOptions<T> Named(string name);
     }
 }

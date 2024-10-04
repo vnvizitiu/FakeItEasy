@@ -4,11 +4,12 @@ namespace FakeItEasy.Configuration
     /// Provides configuration for property setters and allows the user to specify validations for arguments.
     /// </summary>
     public interface IPropertySetterConfiguration :
-        IExceptionThrowerConfiguration,
-        ICallbackConfiguration<IPropertySetterConfiguration>,
-        ICallBaseConfiguration,
+        IExceptionThrowerConfiguration<IPropertySetterConfiguration>,
+        ICallbackConfiguration<IPropertySetterAfterCallbackConfiguredConfiguration>,
+        ICallBaseConfiguration<IPropertySetterConfiguration>,
+        ICallWrappedMethodConfiguration<IPropertySetterConfiguration>,
         IAssertConfiguration,
-        IDoNothingConfiguration
+        IDoNothingConfiguration<IPropertySetterConfiguration>
     {
     }
 }

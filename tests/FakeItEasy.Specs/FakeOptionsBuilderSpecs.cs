@@ -2,20 +2,17 @@ namespace FakeItEasy.Specs
 {
     using System;
     using System.Linq;
-    using System.Reflection.Emit;
-    using FakeItEasy.Core;
+    using System.Reflection;
     using FakeItEasy.Creation;
-    using FakeItEasy.SelfInitializedFakes;
-    using FakeItEasy.Tests;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xbehave;
     using Xunit;
 
-    public class FakeOptionsBuilderSpecs
+    public static class FakeOptionsBuilderSpecs
     {
         [Scenario]
-        public void FakeOptionsBuilderAppliesConfigureFake(
+        public static void FakeOptionsBuilderAppliesConfigureFake(
             RobotActivatedEvent fake)
         {
             "Given a type that has an implicit options builder defined"
@@ -47,20 +44,17 @@ namespace FakeItEasy.Specs
                 .x(() => fake.Should().BeAssignableTo<IDisposable>());
 
             "And the fake implements the interface specified by type parameter"
-                .x(() => fake.Should().BeAssignableTo<ICloneable>());
+                .x(() => fake.Should().BeAssignableTo<IComparable>());
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderWrapping(
+        public static void DefinedFakeOptionsBuilderWrapping(
             WrapsAValidObject fake)
         {
             "Given a type that has an implicit options builder defined"
                 .See<WrapsAValidObject>();
 
             "And the options builder updates the options to wrap an object"
-                .See<WrapsAValidObjectOptionsBuilder>(_ => _.BuildOptions);
-
-            "And calls to the wrapped object are to be recorded"
                 .See<WrapsAValidObjectOptionsBuilder>(_ => _.BuildOptions);
 
             "When I create a fake of the type"
@@ -70,18 +64,11 @@ namespace FakeItEasy.Specs
                 .x(() => fake.AMethod());
 
             "Then the call is delegated to the wrapped object"
-                .x(() => A.CallTo(() => WrapsAValidObjectOptionsBuilder.WrappedObject.AMethod()).MustHaveHappened());
-
-            "And the call is recorded"
-                .x(() =>
-                {
-                    A.CallTo(() => WrapsAValidObjectOptionsBuilder.Recorder.RecordCall(A<ICompletedFakeObjectCall>._))
-                        .MustHaveHappened();
-                });
+                .x(() => WrapsAValidObjectOptionsBuilder.WrappedObject.WasCalled.Should().BeTrue());
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderWrappingNull(
+        public static void DefinedFakeOptionsBuilderWrappingNull(
             Exception exception)
         {
             "Given a type that has an implicit options builder defined"
@@ -94,11 +81,12 @@ namespace FakeItEasy.Specs
                 .x(() => exception = Record.Exception(() => A.Fake<WrapsNull>()));
 
             "Then an argument null exception is thrown"
-                .x(() => exception.Should().BeAnExceptionOfType<ArgumentNullException>());
+                .x(() => exception.Should().BeAnExceptionOfType<UserCallbackException>()
+                    .WithInnerException<ArgumentException>());
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderMakingStrict(
+        public static void DefinedFakeOptionsBuilderMakingStrict(
             Strict fake,
             Exception exception)
         {
@@ -119,7 +107,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderCallsBaseMethods(
+        public static void DefinedFakeOptionsBuilderCallsBaseMethods(
             CallsBaseMethods fake,
             string result)
         {
@@ -140,7 +128,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderConstructorArgumentsByList(
+        public static void DefinedFakeOptionsBuilderConstructorArgumentsByList(
             ConstructorArgumentsSetByList fake)
         {
             "Given a type with a constructor that requires parameters"
@@ -160,7 +148,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderConstructorArgumentsByConstructor(
+        public static void DefinedFakeOptionsBuilderConstructorArgumentsByConstructor(
             ConstructorArgumentsSetByConstructor fake)
         {
             "Given a type with a constructor that requires parameters"
@@ -180,7 +168,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void DefinedFakeOptionsBuilderConstructorArgumentsByConstructorForWrongType(
+        public static void DefinedFakeOptionsBuilderConstructorArgumentsByConstructorForWrongType(
             Exception exception)
         {
             "Given a type with a constructor that requires parameters"
@@ -196,12 +184,13 @@ namespace FakeItEasy.Specs
                 .x(() => exception = Record.Exception(() => A.Fake<ConstructorArgumentsSetByConstructorForWrongType>()));
 
             "Then an exception is thrown"
-                .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
+                .x(() => exception.Should().BeAnExceptionOfType<UserCallbackException>()
+                    .WithInnerException<ArgumentException>()
                     .WithMessage("Supplied constructor is for type FakeItEasy.Specs.ConstructorArgumentsSetByConstructorForWrongType, but must be for FakeItEasy.Specs.ConstructorArgumentsSetByConstructor."));
         }
 
         [Scenario]
-        public void FakeOptionsBuilderPriority(
+        public static void FakeOptionsBuilderPriority(
             RobotRunsAmokEvent fake)
         {
             "Given a type"
@@ -221,7 +210,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void DuringConstruction(
+        public static void DuringConstruction(
             RobotRunsAmokEvent fake)
         {
             "Given a type with a parameterless constructor"
@@ -244,7 +233,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void GenericFakeOptionsBuilderDefaultPriority(
+        public static void GenericFakeOptionsBuilderDefaultPriority(
             IFakeOptionsBuilder builder,
             Priority priority)
         {
@@ -259,7 +248,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void GenericFakeOptionsBuilderBuildOptionsForMatchingType(
+        public static void GenericFakeOptionsBuilderBuildOptionsForMatchingType(
             SomeClass fake)
         {
             "Given a type with a parameterless constructor"
@@ -285,7 +274,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void GenericFakeOptionsBuilderBuildOptionsForDerivedType(
+        public static void GenericFakeOptionsBuilderBuildOptionsForDerivedType(
             SomeDerivedClass fake)
         {
             "Given a type with a parameterless constructor"
@@ -314,7 +303,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public void GenericFakeOptionsBuilderBuildOptionsForParentType(
+        public static void GenericFakeOptionsBuilderBuildOptionsForParentType(
             SomeParentClass fake)
         {
             "Given a type with a parameterless constructor"
@@ -355,11 +344,11 @@ namespace FakeItEasy.Specs
         {
         }
 
-        private class SomeClassOptionsBuilder : FakeOptionsBuilder<SomeClass>
+        private sealed class SomeClassOptionsBuilder : FakeOptionsBuilder<SomeClass>
         {
             protected override void BuildOptions(IFakeOptions<SomeClass> options)
             {
-                if (options == null)
+                if (options is null)
                 {
                     throw new ArgumentNullException(nameof(options));
                 }
@@ -375,7 +364,7 @@ namespace FakeItEasy.Specs
 
         public bool CanBuildOptionsForFakeOfType(Type type)
         {
-            return type != null && type.FullName + "OptionsBuilder" == this.GetType().FullName;
+            return type is not null && type.FullName + "OptionsBuilder" == this.GetType().FullName;
         }
 
         public abstract void BuildOptions(Type typeOfFake, IFakeOptions options);
@@ -389,9 +378,9 @@ namespace FakeItEasy.Specs
     {
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
-                options.Wrapping(null);
+                options.Wrapping(null!);
             }
         }
     }
@@ -405,21 +394,20 @@ namespace FakeItEasy.Specs
 
     public class AWrappedType : WrapsAValidObject
     {
+        public bool WasCalled { get; private set; }
+
+        public override void AMethod() => this.WasCalled = true;
     }
 
     public class WrapsAValidObjectOptionsBuilder : ConventionBasedOptionsBuilder
     {
-        public static AWrappedType WrappedObject { get; } = A.Fake<AWrappedType>();
-
-        public static ISelfInitializingFakeRecorder Recorder { get; } =
-            A.Fake<ISelfInitializingFakeRecorder>(options =>
-                options.ConfigureFake(fake => A.CallTo(() => fake.IsRecording).Returns(true)));
+        public static AWrappedType WrappedObject { get; } = new AWrappedType();
 
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
-                options.Wrapping(WrappedObject).RecordedBy(Recorder);
+                options.Wrapping(WrappedObject);
             }
         }
     }
@@ -435,7 +423,7 @@ namespace FakeItEasy.Specs
     {
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
                 options.Strict();
             }
@@ -451,7 +439,7 @@ namespace FakeItEasy.Specs
     {
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
                 options.CallsBaseMethods();
             }
@@ -472,7 +460,7 @@ namespace FakeItEasy.Specs
     {
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
                 options.WithArgumentsForConstructor(new object[] { this.GetType().Name });
             }
@@ -493,7 +481,7 @@ namespace FakeItEasy.Specs
     {
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
                 options.WithArgumentsForConstructor(() => new ConstructorArgumentsSetByConstructor(this.GetType().Name));
             }
@@ -514,7 +502,7 @@ namespace FakeItEasy.Specs
     {
         public override void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options != null)
+            if (options is not null)
             {
                 options.WithArgumentsForConstructor(() => new ConstructorArgumentsSetByConstructor(this.GetType().Name));
             }
@@ -534,7 +522,7 @@ namespace FakeItEasy.Specs
 
         public void BuildOptions(Type typeOfFake, IFakeOptions options)
         {
-            if (options == null)
+            if (options is null)
             {
                 return;
             }
@@ -545,15 +533,9 @@ namespace FakeItEasy.Specs
                 domainEvent.ID = this.nextID++;
                 domainEvent.Name = typeOfFake.Name;
             })
-                .WithAdditionalAttributes(new[] { CreateCustomAttributeBuilder() })
+                .WithAttributes(() => new ForTestAttribute())
                 .Implements(typeof(IDisposable))
-                .Implements<ICloneable>();
-        }
-
-        private static CustomAttributeBuilder CreateCustomAttributeBuilder()
-        {
-            var constructor = typeof(ForTestAttribute).GetConstructor(new Type[0]);
-            return new CustomAttributeBuilder(constructor, new object[0]);
+                .Implements<IComparable>();
         }
     }
 
@@ -565,7 +547,7 @@ namespace FakeItEasy.Specs
 
         protected override void BuildOptions(IFakeOptions<RobotRunsAmokEvent> options)
         {
-            if (options == null)
+            if (options is null)
             {
                 return;
             }

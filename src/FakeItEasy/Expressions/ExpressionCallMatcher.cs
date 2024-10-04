@@ -4,7 +4,6 @@ namespace FakeItEasy.Expressions
     using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
-    using System.Text;
     using FakeItEasy.Configuration;
     using FakeItEasy.Core;
     using FakeItEasy.Expressions.ArgumentConstraints;
@@ -16,8 +15,10 @@ namespace FakeItEasy.Expressions
         : ICallMatcher
     {
         private readonly MethodInfoManager methodInfoManager;
-        private IEnumerable<IArgumentConstraint> argumentConstraints;
+        private readonly ParsedCallExpression parsedExpression;
+        private IArgumentConstraint[] argumentConstraints;
         private Func<ArgumentCollection, bool> argumentsPredicate;
+        private bool useExplicitArgumentsPredicate;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="ExpressionCallMatcher" /> class.
@@ -27,21 +28,28 @@ namespace FakeItEasy.Expressions
         /// <param name="methodInfoManager">The method info manager to use.</param>
         public ExpressionCallMatcher(ParsedCallExpression parsedExpression, ExpressionArgumentConstraintFactory constraintFactory, MethodInfoManager methodInfoManager)
         {
+            this.parsedExpression = parsedExpression;
             this.methodInfoManager = methodInfoManager;
 
-            this.Method = parsedExpression.CalledMethod;
+            var constraints = new IArgumentConstraint[parsedExpression.ArgumentsExpressions.Length];
+            for (var i = 0; i < constraints.Length; i++)
+            {
+                constraints[i] = constraintFactory.GetArgumentConstraint(parsedExpression.ArgumentsExpressions[i]);
+            }
 
-            this.argumentConstraints = GetArgumentConstraints(parsedExpression.ArgumentsExpressions, constraintFactory).ToArray();
+            this.argumentConstraints = constraints;
             this.argumentsPredicate = this.ArgumentsMatchesArgumentConstraints;
         }
 
-        /// <summary>
-        /// Gets a human readable description of calls that will be matched by this
-        /// matcher.
-        /// </summary>
-        public virtual string DescriptionOfMatchingCall => this.ToString();
+        private MethodInfo Method => this.parsedExpression.CalledMethod;
 
-        private MethodInfo Method { get; }
+        private object? CallTarget => this.parsedExpression.CallTarget;
+
+        /// <summary>
+        /// Writes a description of calls the rule is applicable to.
+        /// </summary>
+        /// <param name="writer">The writer on which to describe the call.</param>
+        public virtual void DescribeCallOn(IOutputWriter writer) => CallConstraintDescriber.DescribeCallOn(writer, this.CallTarget, this.Method, this.argumentConstraints);
 
         /// <summary>
         /// Matches the specified call against the expression.
@@ -50,62 +58,48 @@ namespace FakeItEasy.Expressions
         /// <returns>True if the call is matched by the expression.</returns>
         public virtual bool Matches(IFakeObjectCall call)
         {
-            Guard.AgainstNull(call, nameof(call));
+            Guard.AgainstNull(call);
 
             return this.InvokesSameMethodOnTarget(call.FakedObject.GetType(), call.Method, this.Method)
                 && this.ArgumentsMatches(call.Arguments);
         }
 
-        /// <summary>
-        /// Gets a description of the call.
-        /// </summary>
-        /// <returns>Description of the call.</returns>
-        public override string ToString()
-        {
-            var result = new StringBuilder();
-
-            result.Append(this.Method.DeclaringType.FullName);
-            result.Append(".");
-            result.Append(this.Method.Name);
-            result.Append(this.Method.GetGenericArgumentsCSharp());
-
-            this.AppendArgumentsListString(result);
-
-            return result.ToString();
-        }
-
         public virtual void UsePredicateToValidateArguments(Func<ArgumentCollection, bool> predicate)
         {
             this.argumentsPredicate = predicate;
-
-            var numberOfValidators = this.argumentConstraints.Count();
-            this.argumentConstraints = Enumerable.Repeat<IArgumentConstraint>(new PredicatedArgumentConstraint(), numberOfValidators);
+            this.argumentConstraints = this.argumentConstraints.Select(a => new PredicatedArgumentConstraint()).ToArray();
+            this.useExplicitArgumentsPredicate = true;
         }
 
-        public Func<IFakeObjectCall, ICollection<object>> GetOutAndRefParametersValueProducer()
+        public Func<IFakeObjectCall, ICollection<object?>> GetOutAndRefParametersValueProducer()
         {
-            var values = this.argumentConstraints.OfType<IArgumentValueProvider>()
-                .Select(valueProvidingConstraint => valueProvidingConstraint.Value)
-                .ToList();
+            List<object?>? values = null;
 
-            if (values.Any())
+            foreach (var argumentConstraint in this.argumentConstraints)
             {
-                return call => values;
+                if (argumentConstraint is IArgumentValueProvider valueProvidingConstraint)
+                {
+                    if (values is null)
+                    {
+                        values = new List<object?>();
+                    }
+
+                    values.Add(valueProvidingConstraint.Value);
+                }
             }
 
-            return null;
+            return values is null ? BuildableCallRule.DefaultOutAndRefParametersValueProducer : call => values!;
         }
 
-        private static IEnumerable<IArgumentConstraint> GetArgumentConstraints(IEnumerable<ParsedArgumentExpression> argumentExpressions, ExpressionArgumentConstraintFactory constraintFactory)
+        public void PerformConstraintMatcherSideEffects(IFakeObjectCall fakeObjectCall)
         {
-            if (argumentExpressions == null)
+            for (int i = 0; i < fakeObjectCall.Arguments.Count; ++i)
             {
-                return Enumerable.Empty<IArgumentConstraint>();
+                if (this.argumentConstraints[i] is IHaveASideEffect constraintWithSideEffect)
+                {
+                    constraintWithSideEffect.ApplySideEffect(fakeObjectCall.Arguments[i]);
+                }
             }
-
-            return
-                from argument in argumentExpressions
-                select constraintFactory.GetArgumentConstraint(argument);
         }
 
         private bool InvokesSameMethodOnTarget(Type type, MethodInfo first, MethodInfo second)
@@ -113,45 +107,35 @@ namespace FakeItEasy.Expressions
             return this.methodInfoManager.WillInvokeSameMethodOnTarget(type, first, second);
         }
 
-        private void AppendArgumentsListString(StringBuilder result)
-        {
-            result.Append("(");
-            var firstArgument = true;
-
-            foreach (var constraint in this.argumentConstraints)
-            {
-                if (!firstArgument)
-                {
-                    result.Append(", ");
-                }
-                else
-                {
-                    firstArgument = false;
-                }
-
-                constraint.WriteDescription(new StringBuilderOutputWriter(result));
-            }
-
-            result.Append(")");
-        }
-
         private bool ArgumentsMatches(ArgumentCollection argumentCollection)
         {
-            return this.argumentsPredicate(argumentCollection);
+            try
+            {
+                return this.argumentsPredicate(argumentCollection);
+            }
+            catch (Exception ex) when (this.useExplicitArgumentsPredicate && !(ex is FakeConfigurationException))
+            {
+                throw new UserCallbackException(ExceptionMessages.UserCallbackThrewAnException("Arguments predicate"), ex);
+            }
         }
 
         private bool ArgumentsMatchesArgumentConstraints(ArgumentCollection argumentCollection)
         {
-            return argumentCollection
-                .AsEnumerable()
-                .Zip(this.argumentConstraints, (x, y) => new { ArgumentValue = x, Constraint = y })
-                .All(x => x.Constraint.IsValid(x.ArgumentValue));
+            for (int i = 0; i < argumentCollection.Count; ++i)
+            {
+                if (!this.argumentConstraints[i].IsValid(argumentCollection[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         private class PredicatedArgumentConstraint
             : IArgumentConstraint
         {
-            public bool IsValid(object argument)
+            public bool IsValid(object? argument)
             {
                 return true;
             }

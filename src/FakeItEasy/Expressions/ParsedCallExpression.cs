@@ -7,32 +7,32 @@ namespace FakeItEasy.Expressions
 
     internal class ParsedCallExpression
     {
-        private readonly Lazy<object> callTarget;
+        private readonly Lazy<object?> callTarget;
 
         public ParsedCallExpression(
             MethodInfo calledMethod,
-            Expression callTargetExpression,
-            IEnumerable<ParsedArgumentExpression> argumentsExpressions)
+            Expression? callTargetExpression,
+            ParsedArgumentExpression[] argumentsExpressions)
         {
             this.CalledMethod = calledMethod;
             this.ArgumentsExpressions = argumentsExpressions;
-            this.callTarget = new Lazy<object>(() => callTargetExpression?.Evaluate());
+            this.callTarget = new Lazy<object?>(() => callTargetExpression?.Evaluate());
         }
 
         public ParsedCallExpression(
             MethodInfo calledMethod,
-            object callTarget,
-            IEnumerable<ParsedArgumentExpression> argumentsExpressions)
+            object? callTarget,
+            ParsedArgumentExpression[] argumentsExpressions)
         {
             this.CalledMethod = calledMethod;
             this.ArgumentsExpressions = argumentsExpressions;
-            this.callTarget = new Lazy<object>(() => callTarget);
+            this.callTarget = new Lazy<object?>(() => callTarget);
         }
 
         public MethodInfo CalledMethod { get; }
 
-        public IEnumerable<ParsedArgumentExpression> ArgumentsExpressions { get; }
+        public ParsedArgumentExpression[] ArgumentsExpressions { get; }
 
-        public object CallTarget => this.callTarget.Value;
+        public object? CallTarget => this.callTarget.Value;
     }
 }

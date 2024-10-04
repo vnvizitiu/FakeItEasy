@@ -1,5 +1,6 @@
 namespace FakeItEasy.Configuration
 {
+    using System;
     using FakeItEasy.Core;
 
     /// <summary>
@@ -9,15 +10,15 @@ namespace FakeItEasy.Configuration
     {
         private readonly FakeManager fakeManager;
         private readonly ICallMatcher matcher;
-        private readonly string callDescription;
-        private readonly Repeated repeatConstraint;
+        private readonly Action<IOutputWriter> callDescriber;
+        private readonly CallCountConstraint callCountConstraint;
 
-        internal UnorderedCallAssertion(FakeManager fakeManager, ICallMatcher matcher, string callDescription, Repeated repeatConstraint)
+        internal UnorderedCallAssertion(FakeManager fakeManager, ICallMatcher matcher, Action<IOutputWriter> callDescriber, CallCountConstraint callCountConstraint)
         {
             this.fakeManager = fakeManager;
             this.matcher = matcher;
-            this.callDescription = callDescription;
-            this.repeatConstraint = repeatConstraint;
+            this.callDescriber = callDescriber;
+            this.callCountConstraint = callCountConstraint;
         }
 
         /// <summary>
@@ -28,14 +29,16 @@ namespace FakeItEasy.Configuration
         /// <exception cref="ExpectationException">The call was not made in the expected order.</exception>
         public IOrderableCallAssertion Then(UnorderedCallAssertion nextAssertion)
         {
-            var context = ServiceLocator.Current.Resolve<SequentialCallContext>();
+            Guard.AgainstNull(nextAssertion);
+
+            var context = ServiceLocator.Resolve<SequentialCallContext.Factory>().Invoke();
             this.CheckCallHappenedInOrder(context);
             return new OrderedCallAssertion(context).Then(nextAssertion);
         }
 
         private void CheckCallHappenedInOrder(SequentialCallContext context)
         {
-            context.CheckNextCall(this.fakeManager, this.matcher.Matches, this.callDescription, this.repeatConstraint);
+            context.CheckNextCall(this.fakeManager, this.matcher.Matches, this.callDescriber, this.callCountConstraint);
         }
 
         private class OrderedCallAssertion : IOrderableCallAssertion
@@ -49,7 +52,8 @@ namespace FakeItEasy.Configuration
 
             public IOrderableCallAssertion Then(UnorderedCallAssertion nextAssertion)
             {
-                Guard.AgainstNull(nextAssertion, nameof(nextAssertion));
+                Guard.AgainstNull(nextAssertion);
+
                 nextAssertion.CheckCallHappenedInOrder(this.context);
                 return this;
             }

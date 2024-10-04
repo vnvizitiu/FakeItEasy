@@ -13,7 +13,7 @@ namespace FakeItEasy
     /// FakedObject-property.
     /// </summary>
     /// <typeparam name="T">The type of the faked object.</typeparam>
-    public class Fake<T> : IStartConfiguration<T>
+    public class Fake<T> : IHideObjectMembers where T : class
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="Fake{T}"/> class.
@@ -21,7 +21,7 @@ namespace FakeItEasy
         /// </summary>
         public Fake()
         {
-            this.FakedObject = CreateFake(x => { });
+            this.FakedObject = (T)FakeAndDummyManager.CreateFake(typeof(T), new LoopDetectingResolutionContext());
         }
 
         /// <summary>
@@ -34,7 +34,7 @@ namespace FakeItEasy
         [SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures", Justification = "This is by design when using the Expression-, Action- and Func-types.")]
         public Fake(Action<IFakeOptions<T>> optionsBuilder)
         {
-            Guard.AgainstNull(optionsBuilder, nameof(optionsBuilder));
+            Guard.AgainstNull(optionsBuilder);
 
             this.FakedObject = CreateFake(optionsBuilder);
         }
@@ -49,14 +49,14 @@ namespace FakeItEasy
         /// </summary>
         public IEnumerable<ICompletedFakeObjectCall> RecordedCalls => FakeItEasy.Fake.GetCalls(this.FakedObject);
 
-        private static IFakeAndDummyManager FakeAndDummyManager =>
-            ServiceLocator.Current.Resolve<IFakeAndDummyManager>();
+        private static FakeAndDummyManager FakeAndDummyManager =>
+            ServiceLocator.Resolve<FakeAndDummyManager>();
 
         private IStartConfiguration<T> StartConfiguration
         {
             get
             {
-                var factory = ServiceLocator.Current.Resolve<IStartConfigurationFactory>();
+                var factory = ServiceLocator.Resolve<IStartConfigurationFactory>();
                 return factory.CreateConfiguration<T>(FakeItEasy.Fake.GetFakeManager(this.FakedObject));
             }
         }
@@ -85,6 +85,18 @@ namespace FakeItEasy
         }
 
         /// <summary>
+        /// Configures calls to the setter of the specified property.
+        /// </summary>
+        /// <typeparam name="TValue">The type of the property.</typeparam>
+        /// <param name="propertySpecification">An expression specifying the property to configure.</param>
+        /// <returns>A configuration object.</returns>
+        [SuppressMessage("Microsoft.Design", "CA1006:DoNotNestGenericTypesInMemberSignatures", Justification = "This is by design when using the Expression-, Action- and Func-types.")]
+        public IPropertySetterAnyValueConfiguration<TValue> CallsToSet<TValue>(Expression<Func<T, TValue>> propertySpecification)
+        {
+            return this.StartConfiguration.CallsToSet(propertySpecification);
+        }
+
+        /// <summary>
         /// Configures any call to the fake object.
         /// </summary>
         /// <returns>A configuration object.</returns>
@@ -93,11 +105,24 @@ namespace FakeItEasy
             return this.StartConfiguration.AnyCall();
         }
 
+        /// <summary>
+        /// Configures subscription to or unsubscription from an event of the fake object.
+        /// </summary>
+        /// <param name="action">An <see cref="EventAction"/> that represents the action to configure.</param>
+        /// <returns>A configuration object.</returns>
+        public IAnyCallConfigurationWithVoidReturnType CallsTo(EventAction action)
+        {
+            return this.AnyCall().MatchingEventAction(this.FakedObject, action);
+        }
+
         private static T CreateFake(Action<IFakeOptions<T>> optionsBuilder)
         {
-            Guard.AgainstNull(optionsBuilder, nameof(optionsBuilder));
+            Guard.AgainstNull(optionsBuilder);
 
-            return (T)FakeAndDummyManager.CreateFake(typeof(T), options => optionsBuilder((IFakeOptions<T>)options));
+            return (T)FakeAndDummyManager.CreateFake(
+                typeof(T),
+                options => optionsBuilder((IFakeOptions<T>)options),
+                new LoopDetectingResolutionContext());
         }
     }
 }

@@ -1,7 +1,9 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
+    using System;
     using System.Collections.Generic;
     using System.Linq;
+    using FakeItEasy.Tests.TestHelpers;
     using Xunit;
 
     public class CollectionIsEmptyTests
@@ -9,21 +11,21 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
     {
         protected override string ExpectedDescription => "empty collection";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
-                null,
+                (object?)null,
                 new List<object> { 1, 2 },
                 new object[] { "foo" },
                 Enumerable.Range(1, 10).Cast<object>());
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
                 new List<object>(),
                 Enumerable.Empty<object>(),
-                new object[0]);
+                Array.Empty<object>());
         }
 
         [Theory]
@@ -40,7 +42,7 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
             base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
-        protected override void CreateConstraint(IArgumentConstraintManager<IEnumerable<object>> scope)
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<IEnumerable<object>> scope)
         {
             scope.IsEmpty();
         }

@@ -1,23 +1,13 @@
-﻿Imports System.Diagnostics.CodeAnalysis
+Imports System.Diagnostics.CodeAnalysis
 Imports FluentAssertions
 Imports Xunit
-
-<Assembly: SuppressMessage("Microsoft.Design", "CA1003:UseGenericEventHandlerInstances",
-    Scope:="type", Target:="FakeItEasy.IntegrationTests.VB.IHaveEvents+DerivedEventHanderEventHandler",
-    Justification:="Required to test nonstandard events.")>
 
 Public Interface IHaveEvents
 
     Event NonGenericEventHander As EventHandler
     Event GenericEventHander As EventHandler(Of MyEventArgs)
 
-    <SuppressMessage("Microsoft.Design", "CA1009:DeclareEventHandlersCorrectly",
-        Justification:="Required to test nonstandard events.")>
-    Event DerivedEventHander(ByVal sender As Object, args As MyEventArgs)
-
-    <SuppressMessage("Microsoft.Design", "CA1009:DeclareEventHandlersCorrectly",
-        Justification:="Required to test nonstandard events.")>
-    Event ObjectEvent(ByVal eventValue As Object)
+    Event TokenEvent(ByVal eventValue As Token)
 
 End Interface
 
@@ -25,11 +15,14 @@ Public Class MyEventArgs
     Inherits EventArgs
 End Class
 
+Public Class Token
+End Class
+
 Public Class RaisingEventsTests
 
     Dim capturedSender As Object
     Dim capturedEventArgs As EventArgs
-    Dim capturedObject As Object
+    Dim capturedToken As Token
 
     Private Sub HandlesNonGenericEventHandler(sender As Object, eventArgs As EventArgs)
         capturedSender = sender
@@ -41,13 +34,8 @@ Public Class RaisingEventsTests
         capturedEventArgs = eventArgs
     End Sub
 
-    Private Sub HandlesDerivedEventHandler(sender As Object, eventArgs As MyEventArgs)
-        capturedSender = sender
-        capturedEventArgs = eventArgs
-    End Sub
-
-    Private Sub HandlesObjectEvent(objectOfInterest As Object)
-        capturedObject = objectOfInterest
+    Private Sub HandlesTokenEvent(token As Token)
+        capturedToken = token
     End Sub
 
     Public Sub New()
@@ -68,7 +56,7 @@ Public Class RaisingEventsTests
         AddHandler target.NonGenericEventHander, Raise.With(aSender, New EventArgs())
 
         ' Assert
-        ReferenceEquals(capturedSender, aSender).Should().BeTrue()
+        CapturedSenderShouldBeSameAs(aSender)
     End Sub
 
     <Fact>
@@ -85,7 +73,7 @@ Public Class RaisingEventsTests
         AddHandler target.NonGenericEventHander, Raise.With(aSender, eventArgs)
 
         ' Assert
-        ReferenceEquals(capturedEventArgs, eventArgs).Should().BeTrue()
+        capturedEventArgs.Should().BeSameAs(eventArgs)
     End Sub
 
     <Fact>
@@ -101,7 +89,7 @@ Public Class RaisingEventsTests
         AddHandler target.GenericEventHander, Raise.With(aSender, New MyEventArgs())
 
         ' Assert
-        ReferenceEquals(capturedSender, aSender).Should().BeTrue()
+        CapturedSenderShouldBeSameAs(aSender)
     End Sub
 
     <Fact>
@@ -118,56 +106,31 @@ Public Class RaisingEventsTests
         AddHandler target.GenericEventHander, Raise.With(aSender, eventArgs)
 
         ' Assert
-        ReferenceEquals(capturedEventArgs, eventArgs).Should().BeTrue()
-    End Sub
-
-    <Fact>
-    <SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate", Justification:="Required for testing.")>
-    Public Sub Raise_DerivedEventHandler_sends_good_sender()
-        'Arrange
-        Dim target = A.Fake(Of IHaveEvents)()
-        Dim aSender = New Object
-
-        AddHandler target.DerivedEventHander, AddressOf HandlesDerivedEventHandler
-
-        ' Act
-        AddHandler target.DerivedEventHander, Raise.With(Of IHaveEvents.DerivedEventHanderEventHandler)(aSender, New MyEventArgs())
-
-        ' Assert
-        ReferenceEquals(capturedSender, aSender).Should().BeTrue()
-    End Sub
-
-    <Fact>
-    <SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate", Justification:="Required for testing.")>
-    Public Sub Raise_DerivedEventHandler_sends_good_arguments()
-        'Arrange
-        Dim target = A.Fake(Of IHaveEvents)()
-        Dim eventArgs = New MyEventArgs()
-        Dim aSender = New Object
-
-        AddHandler target.DerivedEventHander, AddressOf HandlesDerivedEventHandler
-
-        ' Act
-        AddHandler target.DerivedEventHander, Raise.With(Of IHaveEvents.DerivedEventHanderEventHandler)(aSender, eventArgs)
-
-        ' Assert
-        ReferenceEquals(capturedEventArgs, eventArgs).Should().BeTrue()
+        capturedEventArgs.Should().BeSameAs(eventArgs)
     End Sub
 
     <Fact>
     <SuppressMessage("Microsoft.Design", "CA1030:UseEventsWhereAppropriate",
         Justification:="Required for testing.")>
-    Public Sub Raise_ObjectEvent_sends_object()
+    Public Sub RaiseFreeform_TokenEvent_sends_token()
         'Arrange
         Dim target = A.Fake(Of IHaveEvents)()
-        Dim anObject As Object = New Object()
+        Dim token As Token = New Token
 
-        AddHandler target.ObjectEvent, AddressOf HandlesObjectEvent
+        AddHandler target.TokenEvent, AddressOf HandlesTokenEvent
 
         ' Act
-        AddHandler target.ObjectEvent, Raise.With(Of IHaveEvents.ObjectEventEventHandler)(anObject)
+        AddHandler target.TokenEvent, Raise.FreeForm(Of IHaveEvents.TokenEventEventHandler).With(token)
 
         ' Assert
-        ReferenceEquals(capturedObject, anObject).Should().BeTrue()
+        capturedToken.Should().BeSameAs(token)
     End Sub
+
+    Private Sub CapturedSenderShouldBeSameAs(aSender As Object)
+        ' We cannot use fluent assertions on Object because VB.NET doesn't support extension methods on Object;
+        ' this is related to the fact that there is no dynamic in VB.NET: anything typed as Object is late bound.
+        ' More details at https://blogs.msdn.microsoft.com/vbteam/2007/01/24/extension-methods-and-late-binding-extension-methods-part-4/
+        ReferenceEquals(capturedSender, aSender).Should().BeTrue()
+    End Sub
+
 End Class

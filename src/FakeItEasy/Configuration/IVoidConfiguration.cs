@@ -1,15 +1,16 @@
 namespace FakeItEasy.Configuration
 {
     /// <summary>
-    /// Provides configuration methods for methods that does not have a return value.
+    /// Provides configuration methods for methods that do not have a return value.
     /// </summary>
     public interface IVoidConfiguration :
-        IExceptionThrowerConfiguration,
-        ICallbackConfiguration<IVoidConfiguration>,
-        ICallBaseConfiguration,
-        IOutAndRefParametersConfiguration,
+        IExceptionThrowerConfiguration<IVoidConfiguration>,
+        ICallbackConfiguration<IVoidAfterCallbackConfiguredConfiguration>,
+        ICallBaseConfiguration<IVoidConfiguration>,
+        ICallWrappedMethodConfiguration<IVoidConfiguration>,
+        IOutAndRefParametersConfiguration<IVoidConfiguration>,
         IAssertConfiguration,
-        IDoNothingConfiguration
+        IDoNothingConfiguration<IVoidConfiguration>
     {
     }
 }

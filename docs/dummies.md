@@ -63,28 +63,32 @@ argument values. It uses Dummies.
 When FakeItEasy needs to access a Dummy of type `T`, it tries a number
 of approaches in turn, until one succeeds:
 
+1. If `T` is `void`, return `null`.
 1. If there's a user-supplied
-  [custom Dummy creation](custom-dummy-creation.md) mechanism for `T`,
+  [dummy factory](custom-dummy-creation.md) for `T`,
   return whatever it makes.
-1. If `T` is `Task`, the returned Dummy will be an actual `Task` that
-  completes immediately.
-1. If `T` is `Task<TResult>`, the returned Dummy will be an actual
-  `Task<TResult>` that completes immediately and whose
-  `Result` is a Dummy of type `TResult`, or a default `TResult` if no
-  Dummy can be made for `TResult`.
+1. If `T` is `String`, return an empty string.
+1. If `T` is `Task` or `ValueTask`, the returned Dummy will be an actual `Task` or `ValueTask`
+   that is already completed.
+1. If `T` is `Task<TResult>` or `ValueTask<TResult>`, the returned Dummy will be an actual
+  `Task<TResult>` or `ValueTask<TResult>` that is already completed and whose `Result` is a
+  Dummy of type `TResult`, or a default `TResult` if no  Dummy can be made for `TResult`.
 1. If `T` is a `Lazy<TValue>` the returned Dummy will be an actual
   `Lazy<TValue>` whose `Value` is a Dummy of type
   `TValue`, or a default `TValue` if no Dummy can be made
   for `TValue`.
+1. If `T` is a tuple type (`Tuple<>` or `ValueTuple<>`), the Dummy will
+be a tuple whose elements are dummies, or default values when dummies
+can't be made.
+1. If `T` is a value type, the Dummy will be the default value for that type (i.e. `new T()`).
 1. If `T` is [fakeable](what-can-be-faked.md), the Dummy will be a
   Fake `T`.
-1. If `T` is a value type, the Dummy will be a `T` created via
-  `Activator.CreateInstance`.
-1. If nothing above matched, then `T` is a class. Loop over all its constructors in _descending order of argument list length_.
+1. If nothing above matched, then `T` is a class. Loop over all its
+  public constructors in _descending order of argument list length_.
   For each constructor, attempt to get Dummies to satisfy the argument
-  list. If the Dummies can be found, use `Activator.CreateInstance` to
-  create the Dummy, supplying the Dummies as the argument list. If the
-  argument list can't be satisfied, then try the next constructor.
+  list. If the Dummies can be found, create an instance using that constructor,
+  supplying the Dummies as the argument list. If the argument list can't be satisfied,
+  then try the next constructor.
 
 If none of these strategies yield a viable Dummy, then FakeItEasy
 can't make a Dummy of type `T`.

@@ -1,6 +1,7 @@
 namespace FakeItEasy.Specs
 {
     using System;
+    using System.Reflection;
     using FluentAssertions;
     using Xbehave;
 
@@ -36,7 +37,7 @@ namespace FakeItEasy.Specs
             IDummyFactory formatter,
             Priority priority)
         {
-            "Given an argument value formatter that does not override priority"
+            "Given a dummy factory that does not override priority"
                 .x(() => formatter = new SomeDummyFactory());
 
             "When I fetch the Priority"
@@ -46,11 +47,11 @@ namespace FakeItEasy.Specs
                 .x(() => priority.Should().Be(Priority.Default));
         }
 
-        private class SomeClass
+        private sealed class SomeClass
         {
         }
 
-        private class SomeDummyFactory : DummyFactory<SomeClass>
+        private sealed class SomeDummyFactory : DummyFactory<SomeClass>
         {
             protected override SomeClass Create()
             {
@@ -72,7 +73,7 @@ namespace FakeItEasy.Specs
 
         public object Create(Type type)
         {
-            var dummy = (DomainEvent)Activator.CreateInstance(type);
+            var dummy = (DomainEvent)Activator.CreateInstance(type)!;
             dummy.ID = this.nextID++;
             return dummy;
         }

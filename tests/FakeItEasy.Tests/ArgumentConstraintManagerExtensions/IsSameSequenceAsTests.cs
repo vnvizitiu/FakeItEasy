@@ -1,28 +1,30 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
+    using System;
     using System.Collections.Generic;
+    using FakeItEasy.Tests.TestHelpers;
     using Xunit;
 
-    public class IsSameSequenceAsTests
-        : ArgumentConstraintTestBase<IEnumerable<int>>
+    public abstract class IsSameSequenceAsTestsBase
+        : ArgumentConstraintTestBase<IEnumerable<string?>>
     {
-        protected override string ExpectedDescription => "specified sequence";
+        protected override string ExpectedDescription => "\"a\", \"b\", NULL, \"y\", \"z\"";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
-                new[] { 1, 2 },
-                new int[] { },
-                null,
-                new[] { 1, 2, 3, 4 },
-                new[] { 9, 8 });
+                new[] { "1", "2", "x", "y" },
+                Array.Empty<string>(),
+                (object?)null,
+                new[] { "a", "b", null, "z", "x" },
+                new[] { "a", "b" });
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
-                new[] { 1, 2, 3 },
-                new List<int> { 1, 2, 3 });
+                new[] { "a", "b", null, "y", "z" },
+                new List<string?> { "a", "b", null, "y", "z" });
         }
 
         [Theory]
@@ -38,10 +40,21 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
         {
             base.IsValid_should_return_true_for_valid_values(validValue);
         }
+    }
 
-        protected override void CreateConstraint(IArgumentConstraintManager<IEnumerable<int>> scope)
+    public class IsSameSequenceAsTestsWithEnumerable : IsSameSequenceAsTestsBase
+    {
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<IEnumerable<string?>> scope)
         {
-            scope.IsSameSequenceAs(new[] { 1, 2, 3 });
+            scope.IsSameSequenceAs(new List<object?> { "a", "b", null, "y", "z" });
+        }
+    }
+
+    public class IsSameSequenceAsTestsWithParams : IsSameSequenceAsTestsBase
+    {
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<IEnumerable<string?>> scope)
+        {
+            scope.IsSameSequenceAs("a", "b", null, "y", "z");
         }
     }
 }

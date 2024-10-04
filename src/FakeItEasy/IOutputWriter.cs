@@ -5,7 +5,7 @@ namespace FakeItEasy
     /// <summary>
     /// Represents a text writer that writes to the output.
     /// </summary>
-    public interface IOutputWriter
+    public interface IOutputWriter : IHideObjectMembers
     {
         /// <summary>
         /// Writes the specified value to the output.
@@ -20,7 +20,7 @@ namespace FakeItEasy
         /// </summary>
         /// <param name="value">The value to write.</param>
         /// <returns>The writer for method chaining.</returns>
-        IOutputWriter WriteArgumentValue(object value);
+        IOutputWriter WriteArgumentValue(object? value);
 
         /// <summary>
         /// Indents the writer.

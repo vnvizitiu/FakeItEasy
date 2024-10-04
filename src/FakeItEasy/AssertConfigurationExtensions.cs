@@ -14,9 +14,9 @@ namespace FakeItEasy
         /// <returns>An object to assert the call order.</returns>
         public static UnorderedCallAssertion MustHaveHappened(this IAssertConfiguration configuration)
         {
-            Guard.AgainstNull(configuration, nameof(configuration));
+            Guard.AgainstNull(configuration);
 
-            return configuration.MustHaveHappened(Repeated.AtLeast.Once);
+            return configuration.MustHaveHappened(1, Times.OrMore);
         }
 
         /// <summary>
@@ -25,9 +25,81 @@ namespace FakeItEasy
         /// <param name="configuration">The configuration to assert on.</param>
         public static void MustNotHaveHappened(this IAssertConfiguration configuration)
         {
-            Guard.AgainstNull(configuration, nameof(configuration));
+            Guard.AgainstNull(configuration);
 
-            configuration.MustHaveHappened(Repeated.Never);
+            configuration.MustHaveHappened(0, Times.Exactly);
+        }
+
+        /// <summary>
+        /// Asserts that the specified call must have happened once exactly.
+        /// </summary>
+        /// <param name="configuration">The configuration to assert on.</param>
+        /// <returns>An object to assert the call order.</returns>
+        public static UnorderedCallAssertion MustHaveHappenedOnceExactly(this IAssertConfiguration configuration)
+        {
+            Guard.AgainstNull(configuration);
+
+            return configuration.MustHaveHappened(1, Times.Exactly);
+        }
+
+        /// <summary>
+        /// Asserts that the specified call must have happened once or more.
+        /// </summary>
+        /// <param name="configuration">The configuration to assert on.</param>
+        /// <returns>An object to assert the call order.</returns>
+        public static UnorderedCallAssertion MustHaveHappenedOnceOrMore(this IAssertConfiguration configuration)
+        {
+            Guard.AgainstNull(configuration);
+
+            return configuration.MustHaveHappened(1, Times.OrMore);
+        }
+
+        /// <summary>
+        /// Asserts that the specified call must have happened once or less.
+        /// </summary>
+        /// <param name="configuration">The configuration to assert on.</param>
+        /// <returns>An object to assert the call order.</returns>
+        public static UnorderedCallAssertion MustHaveHappenedOnceOrLess(this IAssertConfiguration configuration)
+        {
+            Guard.AgainstNull(configuration);
+
+            return configuration.MustHaveHappened(1, Times.OrLess);
+        }
+
+        /// <summary>
+        /// Asserts that the specified call must have happened twice exactly.
+        /// </summary>
+        /// <param name="configuration">The configuration to assert on.</param>
+        /// <returns>An object to assert the call order.</returns>
+        public static UnorderedCallAssertion MustHaveHappenedTwiceExactly(this IAssertConfiguration configuration)
+        {
+            Guard.AgainstNull(configuration);
+
+            return configuration.MustHaveHappened(2, Times.Exactly);
+        }
+
+        /// <summary>
+        /// Asserts that the specified call must have happened twice or more.
+        /// </summary>
+        /// <param name="configuration">The configuration to assert on.</param>
+        /// <returns>An object to assert the call order.</returns>
+        public static UnorderedCallAssertion MustHaveHappenedTwiceOrMore(this IAssertConfiguration configuration)
+        {
+            Guard.AgainstNull(configuration);
+
+            return configuration.MustHaveHappened(2, Times.OrMore);
+        }
+
+        /// <summary>
+        /// Asserts that the specified call must have happened twice or less.
+        /// </summary>
+        /// <param name="configuration">The configuration to assert on.</param>
+        /// <returns>An object to assert the call order.</returns>
+        public static UnorderedCallAssertion MustHaveHappenedTwiceOrLess(this IAssertConfiguration configuration)
+        {
+            Guard.AgainstNull(configuration);
+
+            return configuration.MustHaveHappened(2, Times.OrLess);
         }
     }
 }

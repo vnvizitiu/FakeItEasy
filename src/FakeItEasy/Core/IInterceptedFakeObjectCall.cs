@@ -9,7 +9,7 @@ namespace FakeItEasy.Core
         /// Sets the return value of the call.
         /// </summary>
         /// <param name="value">The return value to set.</param>
-        void SetReturnValue(object value);
+        void SetReturnValue(object? value);
 
         /// <summary>
         /// Calls the base method of the faked type.
@@ -21,12 +21,6 @@ namespace FakeItEasy.Core
         /// </summary>
         /// <param name="index">The index of the argument to set the value of.</param>
         /// <param name="value">The value to set to the argument.</param>
-        void SetArgumentValue(int index, object value);
-
-        /// <summary>
-        /// Freezes the call so that it can no longer be modified.
-        /// </summary>
-        /// <returns>A completed fake object call.</returns>
-        ICompletedFakeObjectCall AsReadOnly();
+        void SetArgumentValue(int index, object? value);
     }
 }

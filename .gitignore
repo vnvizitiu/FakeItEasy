@@ -1,13 +1,12 @@
+.githubtoken
 .vs
+.idea
 [Oo]bj
 [Bb]in
 artifacts
-packages
+FakeItEasy.user.props
 
-*.csproj.user
-*.vbproj.user
-*.xproj.user
-*.lock.json
+*.*proj.user
 *.ncb
 *.suo
 *.orig

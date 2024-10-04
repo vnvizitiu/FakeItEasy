@@ -2,9 +2,9 @@ namespace FakeItEasy.Tests.Core
 {
     using System;
     using System.Collections.Generic;
-    using System.Globalization;
     using System.Linq;
     using FakeItEasy.Core;
+    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
@@ -12,23 +12,20 @@ namespace FakeItEasy.Tests.Core
     {
         private readonly List<IFakeObjectCall> calls;
         private readonly StringBuilderOutputWriter writer;
+        private readonly IEqualityComparer<IFakeObjectCall> callComparer;
+        private readonly IFakeObjectCallFormatter callFormatter;
 
         public CallWriterTests()
         {
-            Fake.InitializeFixture(this);
+            this.callComparer = A.Fake<IEqualityComparer<IFakeObjectCall>>();
+            this.callFormatter = A.Fake<IFakeObjectCallFormatter>();
 
-            A.CallTo(() => this.CallFormatter.GetDescription(A<IFakeObjectCall>._))
+            A.CallTo(() => this.callFormatter.GetDescription(A<IFakeObjectCall>._))
                 .Returns("Default call description");
 
             this.calls = new List<IFakeObjectCall>();
-            this.writer = new StringBuilderOutputWriter();
+            this.writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
         }
-
-        [Fake]
-        public IEqualityComparer<IFakeObjectCall> CallComparer { get; set; }
-
-        [Fake]
-        internal IFakeObjectCallFormatter CallFormatter { get; set; }
 
         [Fact]
         public void WriteCalls_should_list_the_calls_in_the_calls_collection()
@@ -39,7 +36,7 @@ namespace FakeItEasy.Tests.Core
             foreach (var call in this.calls)
             {
                 var boundCallNumber = callNumber;
-                A.CallTo(() => this.CallFormatter.GetDescription(call)).Returns("Fake call " + boundCallNumber.ToString(CultureInfo.CurrentCulture));
+                A.CallTo(() => this.callFormatter.GetDescription(call)).Returns("Fake call " + boundCallNumber);
                 callNumber++;
             }
 
@@ -59,7 +56,7 @@ namespace FakeItEasy.Tests.Core
 9:  Fake call 9
 10: Fake call 10";
 
-            message.Should().Contain(expectedMessage);
+            message.Should().ContainModuloLineEndings(expectedMessage);
         }
 
         [Fact]
@@ -68,10 +65,10 @@ namespace FakeItEasy.Tests.Core
             // Arrange
             this.StubCalls(10);
 
-            A.CallTo(() => this.CallFormatter.GetDescription(A<IFakeObjectCall>._)).Returns("Fake call");
-            A.CallTo(() => this.CallFormatter.GetDescription(this.calls[9])).Returns("Other call");
+            A.CallTo(() => this.callFormatter.GetDescription(A<IFakeObjectCall>._)).Returns("Fake call");
+            A.CallTo(() => this.callFormatter.GetDescription(this.calls[9])).Returns("Other call");
 
-            A.CallTo(() => this.CallComparer.Equals(A<IFakeObjectCall>.That.Not.IsEqualTo(this.calls[9]), A<IFakeObjectCall>.That.Not.IsEqualTo(this.calls[9]))).Returns(true);
+            A.CallTo(() => this.callComparer.Equals(A<IFakeObjectCall>.That.Not.IsEqualTo(this.calls[9]), A<IFakeObjectCall>.That.Not.IsEqualTo(this.calls[9]))).Returns(true);
 
             var callWriter = this.CreateWriter();
 
@@ -81,11 +78,11 @@ namespace FakeItEasy.Tests.Core
             // Assert
             var message = this.writer.Builder.ToString();
             var expectedMessage =
-@"1:  Fake call repeated 9 times
+@"1:  Fake call 9 times
 ...
 10: Other call";
 
-            message.Should().Contain(expectedMessage);
+            message.Should().ContainModuloLineEndings(expectedMessage);
         }
 
         [Fact]
@@ -95,12 +92,12 @@ namespace FakeItEasy.Tests.Core
 
             foreach (var call in this.calls.Where((x, i) => i % 2 == 0))
             {
-                A.CallTo(() => this.CallFormatter.GetDescription(call)).Returns("odd");
+                A.CallTo(() => this.callFormatter.GetDescription(call)).Returns("odd");
             }
 
             foreach (var call in this.calls.Where((x, i) => i % 2 != 0))
             {
-                A.CallTo(() => this.CallFormatter.GetDescription(call)).Returns("even");
+                A.CallTo(() => this.callFormatter.GetDescription(call)).Returns("even");
             }
 
             var callWriter = this.CreateWriter();
@@ -113,7 +110,7 @@ namespace FakeItEasy.Tests.Core
 3: odd
 4: even";
 
-            message.Should().Contain(expectedMessage);
+            message.Should().ContainModuloLineEndings(expectedMessage);
         }
 
         [Fact]
@@ -123,10 +120,10 @@ namespace FakeItEasy.Tests.Core
 
             foreach (var call in this.calls)
             {
-                A.CallTo(() => this.CallFormatter.GetDescription(call)).Returns(string.Format(CultureInfo.InvariantCulture, "Fake call {0}", Guid.NewGuid()));
+                A.CallTo(() => this.callFormatter.GetDescription(call)).Returns("Fake call " + Guid.NewGuid());
             }
 
-            A.CallTo(() => this.CallFormatter.GetDescription(this.calls[18])).Returns("Last call");
+            A.CallTo(() => this.callFormatter.GetDescription(this.calls[18])).Returns("Last call");
 
             var callWriter = this.CreateWriter();
             callWriter.WriteCalls(this.calls, this.writer);
@@ -136,7 +133,7 @@ namespace FakeItEasy.Tests.Core
 @"19: Last call
 ... Found 11 more calls not displayed here.";
 
-            message.Should().Contain(expectedMessage);
+            message.Should().ContainModuloLineEndings(expectedMessage);
         }
 
         [Fact]
@@ -145,12 +142,10 @@ namespace FakeItEasy.Tests.Core
             // Arrange
             this.StubCalls(10);
 
-            var text =
-@"first line
-second line";
+            var text = string.Join(Environment.NewLine, "first line", "second line");
 
             var callIndex = 0;
-            A.CallTo(() => this.CallFormatter.GetDescription(A<IFakeObjectCall>._)).ReturnsLazily(() => text + ++callIndex);
+            A.CallTo(() => this.callFormatter.GetDescription(A<IFakeObjectCall>._)).ReturnsLazily(() => text + ++callIndex);
 
             var callWriter = this.CreateWriter();
 
@@ -171,7 +166,7 @@ second line";
 @"10: first line
     second line";
 
-            message.Should().Contain(expectedText1).And.Contain(expectedText2);
+            message.Should().ContainModuloLineEndings(expectedText1).And.ContainModuloLineEndings(expectedText2);
         }
 
         [Fact]
@@ -204,7 +199,7 @@ second line";
 
         private CallWriter CreateWriter()
         {
-            return new CallWriter(this.CallFormatter, this.CallComparer);
+            return new CallWriter(this.callFormatter, this.callComparer);
         }
 
         private void StubCalls(int numberOfCalls)

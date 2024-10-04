@@ -11,6 +11,8 @@ namespace FakeItEasy.Tests.Expressions
     using FluentAssertions;
     using Xunit;
 
+    using static FakeItEasy.Tests.TestHelpers.ExpressionHelper;
+
     public class CallExpressionParserTests
     {
         private readonly CallExpressionParser parser;
@@ -26,13 +28,13 @@ namespace FakeItEasy.Tests.Expressions
         public void Should_return_parsed_expression_with_instance_method_set()
         {
             // Arrange
-            var call = Call(() => string.Empty.Equals(null));
+            var call = Call(() => string.Empty.Equals(null, StringComparison.Ordinal));
 
             // Act
             var result = this.parser.Parse(call);
 
             // Assert
-            result.CalledMethod.Should().BeSameAs(GetMethod<string>("Equals", typeof(string)));
+            result.CalledMethod.Should().BeSameAs(GetMethodInfo<string>(x => x.Equals("some string", StringComparison.Ordinal)));
         }
 
         [Fact]
@@ -45,7 +47,7 @@ namespace FakeItEasy.Tests.Expressions
             var result = this.parser.Parse(call);
 
             // Assert
-            result.CalledMethod.Should().BeSameAs(GetPropertyGetter<string>("Length"));
+            result.CalledMethod.Should().BeSameAs(GetMethodInfo((string x) => x.Length));
         }
 
         [Fact]
@@ -59,7 +61,7 @@ namespace FakeItEasy.Tests.Expressions
             var result = this.parser.Parse(call);
 
             // Assert
-            result.CalledMethod.Should().BeSameAs(GetPropertyGetter<TypeWithInternalProperty>("InternalProperty"));
+            result.CalledMethod.Should().BeSameAs(GetMethodInfo((TypeWithInternalProperty x) => x.InternalProperty));
         }
 
         [Fact]
@@ -72,7 +74,7 @@ namespace FakeItEasy.Tests.Expressions
             var result = this.parser.Parse(call);
 
             // Assert
-            result.CalledMethod.Should().BeSameAs(GetMethod<object>("Equals", typeof(object), typeof(object)));
+            result.CalledMethod.Should().BeSameAs(GetMethodInfo<object>(_ => Equals(new object(), new object())));
         }
 
         [Fact]
@@ -167,33 +169,18 @@ namespace FakeItEasy.Tests.Expressions
             result.CallTarget.Should().BeSameAs(d);
         }
 
-        private static MethodInfo GetMethod<T>(string methodName, params Type[] argumentTypes)
-        {
-            return typeof(T).GetMethod(methodName, argumentTypes);
-        }
-
-        private static MethodInfo GetPropertyGetter<T>(string propertyName)
-        {
-            return typeof(T)
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
-                .Where(x => x.Name.Equals(propertyName))
-                .Select(x => x.GetGetMethod(true))
-                .Single();
-        }
-
-        private static LambdaExpression Call(Expression<Action> callExpression)
+        private static Expression<System.Action> Call(Expression<Action> callExpression)
         {
             return callExpression;
         }
 
-        private static LambdaExpression Call<T>(Expression<Func<T>> callExpression)
+        private static Expression<System.Func<T>> Call<T>(Expression<Func<T>> callExpression)
         {
             return callExpression;
         }
 
         private class TypeWithPublicField
         {
-            [SuppressMessage("StyleCop.CSharp.MaintainabilityRules", "SA1401:FieldsMustBePrivate", Justification = "Required for testing.")]
             public int PublicField = 1;
         }
     }

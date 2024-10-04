@@ -3,6 +3,7 @@ namespace FakeItEasy.Configuration
     using System;
     using System.Collections.Generic;
     using System.Linq;
+    using FakeItEasy.Compatibility;
     using FakeItEasy.Core;
 
     /// <summary>
@@ -11,47 +12,25 @@ namespace FakeItEasy.Configuration
     internal abstract class BuildableCallRule
         : IFakeObjectCallRule
     {
+        public static readonly Func<IFakeObjectCall, ICollection<object?>> DefaultOutAndRefParametersValueProducer = call =>
+            ArrayHelper.Empty<object>();
+
+        private static readonly Action<IInterceptedFakeObjectCall> DefaultApplicator = call =>
+            call.SetReturnValue(call.GetDefaultReturnValue());
+
         private readonly List<WherePredicate> wherePredicates;
+        private readonly ICollection<Action<IFakeObjectCall>> actions;
         private Action<IInterceptedFakeObjectCall> applicator;
         private bool wasApplicatorSet;
-        private Func<IFakeObjectCall, ICollection<object>> outAndRefParametersValueProducer;
         private bool canSetOutAndRefParametersValueProducer;
 
         protected BuildableCallRule()
         {
-            this.Actions = new LinkedList<Action<IFakeObjectCall>>();
-            this.UseDefaultApplicator();
-            this.wasApplicatorSet = false;
+            this.actions = new LinkedList<Action<IFakeObjectCall>>();
+            this.applicator = DefaultApplicator;
+            this.OutAndRefParametersValueProducer = DefaultOutAndRefParametersValueProducer;
             this.canSetOutAndRefParametersValueProducer = true;
             this.wherePredicates = new List<WherePredicate>();
-        }
-
-        /// <summary>
-        /// Gets a collection of actions that should be invoked when the configured
-        /// call is made.
-        /// </summary>
-        public virtual ICollection<Action<IFakeObjectCall>> Actions { get; }
-
-        /// <summary>
-        /// Gets or sets a function that provides values to apply to output and reference variables.
-        /// </summary>
-        public Func<IFakeObjectCall, ICollection<object>> OutAndRefParametersValueProducer
-        {
-            get
-            {
-                return this.outAndRefParametersValueProducer;
-            }
-
-            set
-            {
-                if (!this.canSetOutAndRefParametersValueProducer)
-                {
-                    throw new InvalidOperationException("How to assign out and ref parameters has already been defined for this call");
-                }
-
-                this.outAndRefParametersValueProducer = value;
-                this.canSetOutAndRefParametersValueProducer = false;
-            }
         }
 
         /// <summary>
@@ -61,15 +40,34 @@ namespace FakeItEasy.Configuration
         public bool CallBaseMethod { get; set; }
 
         /// <summary>
+        /// Gets or sets a wrapped object to which the call should be delegated.
+        /// </summary>
+        public object? CallWrappedMethodOn { get; set; }
+
+        /// <summary>
         /// Gets or sets the number of times the configured rule should be used.
         /// </summary>
         public virtual int? NumberOfTimesToCall { get; set; }
 
         /// <summary>
-        /// Gets a description of calls the rule is applicable to.
+        /// Sets a function that provides values to apply to output and reference variables.
         /// </summary>
-        /// <value></value>
-        public abstract string DescriptionOfValidCall { get; }
+        protected Func<IFakeObjectCall, ICollection<object?>> OutAndRefParametersValueProducer
+        {
+            private get; set;
+        }
+
+        /// <summary>
+        /// Adds an action that should be invoked when the configured call is made.
+        /// </summary>
+        /// <param name="action">The new action.</param>
+        public void AddAction(Action<IFakeObjectCall> action) => this.actions.Add(action);
+
+        /// <summary>
+        /// Writes a description of calls the rule is applicable to.
+        /// </summary>
+        /// <param name="writer">The writer on which to describe the call.</param>
+        public abstract void DescribeCallOn(IOutputWriter writer);
 
         /// <summary>
         /// Sets an action that is called by the <see cref="Apply"/> method to apply this
@@ -80,7 +78,7 @@ namespace FakeItEasy.Configuration
         {
             if (this.wasApplicatorSet)
             {
-                throw new InvalidOperationException("The behavior for this call has already been defined");
+                throw new InvalidOperationException(ExceptionMessages.CallBehaviorAlreadyDefined);
             }
 
             this.applicator = newApplicator;
@@ -91,16 +89,13 @@ namespace FakeItEasy.Configuration
         /// Sets (or resets) the applicator (see <see cref="UseApplicator"/>) to the default action:
         /// the same as a newly-created rule would have.
         /// </summary>
-        public void UseDefaultApplicator()
-        {
-            this.UseApplicator(call => call.SetReturnValue(call.Method.ReturnType.GetDefaultValue()));
-        }
+        public void UseDefaultApplicator() => this.UseApplicator(DefaultApplicator);
 
         public virtual void Apply(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            Guard.AgainstNull(fakeObjectCall, nameof(fakeObjectCall));
+            Guard.AgainstNull(fakeObjectCall);
 
-            foreach (var action in this.Actions)
+            foreach (var action in this.actions)
             {
                 action.Invoke(fakeObjectCall);
             }
@@ -110,7 +105,16 @@ namespace FakeItEasy.Configuration
 
             if (this.CallBaseMethod)
             {
+                if (EventCall.TryGetEventCall(fakeObjectCall, out var eventCall) && eventCall.IsEventRaiser())
+                {
+                    throw new InvalidOperationException(ExceptionMessages.CannotRaiseEventWhenCallingBaseMethod);
+                }
+
                 fakeObjectCall.CallBaseMethod();
+            }
+            else if (this.CallWrappedMethodOn is object wrappedObject)
+            {
+                fakeObjectCall.CallWrappedMethod(wrappedObject);
             }
         }
 
@@ -121,7 +125,7 @@ namespace FakeItEasy.Configuration
         /// <returns>True if the rule applies to the call.</returns>
         public virtual bool IsApplicableTo(IFakeObjectCall fakeObjectCall)
         {
-            return this.wherePredicates.All(x => x.Predicate.Invoke(fakeObjectCall))
+            return this.wherePredicates.All(x => x.Matches(fakeObjectCall))
                 && this.OnIsApplicableTo(fakeObjectCall);
         }
 
@@ -131,9 +135,9 @@ namespace FakeItEasy.Configuration
         /// <param name="writer">The writer to write the description to.</param>
         public void WriteDescriptionOfValidCall(IOutputWriter writer)
         {
-            Guard.AgainstNull(writer, nameof(writer));
+            Guard.AgainstNull(writer);
 
-            writer.Write(this.DescriptionOfValidCall);
+            this.DescribeCallOn(writer);
 
             Func<string> wherePrefix = () =>
             {
@@ -143,12 +147,12 @@ namespace FakeItEasy.Configuration
 
             using (writer.Indent())
             {
-                foreach (var wherePredicateDescriptionWriter in this.wherePredicates.Select(x => x.DescriptionWriter))
+                foreach (var wherePredicate in this.wherePredicates)
                 {
                     writer.WriteLine();
                     writer.Write(wherePrefix.Invoke());
                     writer.Write(" ");
-                    wherePredicateDescriptionWriter.Invoke(writer);
+                    wherePredicate.WriteDescription(writer);
                 }
             }
         }
@@ -160,26 +164,54 @@ namespace FakeItEasy.Configuration
 
         public abstract void UsePredicateToValidateArguments(Func<ArgumentCollection, bool> predicate);
 
-        protected abstract bool OnIsApplicableTo(IFakeObjectCall fakeObjectCall);
-
         /// <summary>
-        /// Sets the OutAndRefParametersValueProducer directly, bypassing the public setter logic, hence allowing
-        /// it to be set again later.
+        /// Clones the part of the rule that describes which call is being configured.
         /// </summary>
-        /// <param name="value">The new value for OutAndRefParametersValueProducer.</param>
-        protected void SetOutAndRefParametersValueProducer(Func<IFakeObjectCall, ICollection<object>> value)
+        /// <returns>The cloned rule.</returns>
+        public BuildableCallRule CloneCallSpecification()
         {
-            this.outAndRefParametersValueProducer = value;
+            var clone = this.CloneCallSpecificationCore();
+            clone.wherePredicates.AddRange(this.wherePredicates);
+            return clone;
         }
 
-        private static ICollection<int> GetIndexesOfOutAndRefParameters(IInterceptedFakeObjectCall fakeObjectCall)
+        /// <summary>
+        /// Sets the delegate that will provide out and ref parameters when an applicable call is made.
+        /// May only be called once per BuildableCallRule.
+        /// <seealso cref="OutAndRefParametersValueProducer" />
+        /// </summary>
+        /// <param name="producer">The new value producer.</param>
+        /// <exception cref="System.InvalidOperationException">
+        /// Thrown when the SetOutAndRefParametersValueProducer method has previously been called.
+        /// </exception>
+        public void SetOutAndRefParametersValueProducer(Func<IFakeObjectCall, ICollection<object?>> producer)
+        {
+            if (!this.canSetOutAndRefParametersValueProducer)
+            {
+                throw new InvalidOperationException(ExceptionMessages.OutAndRefBehaviorAlreadyDefined);
+            }
+
+            this.OutAndRefParametersValueProducer = producer;
+            this.canSetOutAndRefParametersValueProducer = false;
+        }
+
+        /// <summary>
+        /// When overridden in a derived class, returns a new instance of the same type and copies the call
+        /// specification members for that type.
+        /// </summary>
+        /// <returns>The cloned rule.</returns>
+        protected abstract BuildableCallRule CloneCallSpecificationCore();
+
+        protected abstract bool OnIsApplicableTo(IFakeObjectCall fakeObjectCall);
+
+        private static List<int> GetIndexesOfOutAndRefParameters(IInterceptedFakeObjectCall fakeObjectCall)
         {
             var indexes = new List<int>();
 
             var arguments = fakeObjectCall.Method.GetParameters();
             for (var i = 0; i < arguments.Length; i++)
             {
-                if (arguments[i].ParameterType.IsByRef)
+                if (arguments[i].IsOutOrRef())
                 {
                     indexes.Add(i);
                 }
@@ -190,13 +222,14 @@ namespace FakeItEasy.Configuration
 
         private void ApplyOutAndRefParametersValueProducer(IInterceptedFakeObjectCall fakeObjectCall)
         {
-            if (this.OutAndRefParametersValueProducer == null)
+            if (this.OutAndRefParametersValueProducer == DefaultOutAndRefParametersValueProducer)
             {
                 return;
             }
 
             var indexes = GetIndexesOfOutAndRefParameters(fakeObjectCall);
-            var values = this.OutAndRefParametersValueProducer(fakeObjectCall);
+            ICollection<object?> values = this.OutAndRefParametersValueProducer(fakeObjectCall);
+
             if (values.Count != indexes.Count)
             {
                 throw new InvalidOperationException(ExceptionMessages.NumberOfOutAndRefParametersDoesNotMatchCall);
@@ -210,15 +243,45 @@ namespace FakeItEasy.Configuration
 
         private class WherePredicate
         {
+            private readonly Func<IFakeObjectCall, bool> predicate;
+            private readonly Action<IOutputWriter> descriptionWriter;
+
             public WherePredicate(Func<IFakeObjectCall, bool> predicate, Action<IOutputWriter> descriptionWriter)
             {
-                this.Predicate = predicate;
-                this.DescriptionWriter = descriptionWriter;
+                this.predicate = predicate;
+                this.descriptionWriter = descriptionWriter;
             }
 
-            public Func<IFakeObjectCall, bool> Predicate { get; }
+            public void WriteDescription(IOutputWriter writer)
+            {
+                try
+                {
+                    this.descriptionWriter.Invoke(writer);
+                }
+                catch (Exception ex)
+                {
+                    throw new UserCallbackException(ExceptionMessages.UserCallbackThrewAnException("Call filter description"), ex);
+                }
+            }
 
-            public Action<IOutputWriter> DescriptionWriter { get; }
+            public bool Matches(IFakeObjectCall call)
+            {
+                try
+                {
+                    return this.predicate.Invoke(call);
+                }
+                catch (Exception ex)
+                {
+                    throw new UserCallbackException(ExceptionMessages.UserCallbackThrewAnException($"Call filter <{this.GetDescription()}>"), ex);
+                }
+            }
+
+            private string GetDescription()
+            {
+                var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
+                this.WriteDescription(writer);
+                return writer.Builder.ToString();
+            }
         }
     }
 }

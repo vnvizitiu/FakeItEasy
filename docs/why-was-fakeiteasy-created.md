@@ -1,18 +1,16 @@
-# Why was FakeItEasy created?
-
-#Introduction
+## Introduction
 
 There was a good question on Stack Overflow that asks what
-distinguishes FakeItEasy from other frameworks. creator of FakeItEasy,
+distinguishes FakeItEasy from other libraries. Creator of FakeItEasy,
 Patrik H&auml;gne, answered the question there but we reproduce the
 answer here. Note that the text has been preserved, and particular
 constructs referenced (such as `DummyDefinitions`) have changed or
 been renamed in newer versions of FakeItEasy.
 
 The question on Stack Overflow:
-"[Are fakes better than Mocks?](http://stackoverflow.com/questions/4001101/are-fakes-better-than-mocks)"
+"[Are fakes better than Mocks?](https://stackoverflow.com/questions/4001101/are-fakes-better-than-mocks)"
 
-#Patrik H&auml;gne's answer
+## Patrik H&auml;gne's answer
 
 To be clear, I created FakeItEasy so I'll definitely not say whether
 one framework is better than the other, what I can do is point out

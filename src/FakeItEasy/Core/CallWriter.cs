@@ -18,13 +18,13 @@ namespace FakeItEasy.Core
 
         public virtual void WriteCalls<T>(IEnumerable<T> calls, IOutputWriter writer) where T : IFakeObjectCall
         {
-            if (!calls.Any())
+            var callArray = calls.ToArray();
+            if (callArray.Length == 0)
             {
                 return;
             }
 
             var callInfos = new List<CallInfo>();
-            var callArray = calls.ToArray();
 
             for (var i = 0; i < callArray.Length && i < MaxNumberOfCallsToWrite; i++)
             {
@@ -32,16 +32,14 @@ namespace FakeItEasy.Core
 
                 if (i > 0 && this.callComparer.Equals(callInfos[callInfos.Count - 1].Call, call))
                 {
-                    callInfos[callInfos.Count - 1].Repeat++;
+                    callInfos[callInfos.Count - 1].NumberOfOccurrences++;
                 }
                 else
                 {
-                    callInfos.Add(new CallInfo
-                    {
-                        Call = call,
-                        CallNumber = i + 1,
-                        StringRepresentation = this.callFormatter.GetDescription(call)
-                    });
+                    callInfos.Add(new CallInfo(
+                        call,
+                        i + 1,
+                        this.callFormatter.GetDescription(call)));
                 }
             }
 
@@ -56,7 +54,7 @@ namespace FakeItEasy.Core
             writer.WriteLine();
         }
 
-        private static void WriteCalls(IEnumerable<CallInfo> callInfos, IOutputWriter writer)
+        private static void WriteCalls(List<CallInfo> callInfos, IOutputWriter writer)
         {
             var lastCall = callInfos.Last();
             var numberOfDigitsInLastCallNumber = lastCall.NumberOfDigitsInCallNumber();
@@ -78,10 +76,10 @@ namespace FakeItEasy.Core
                     writer.Write(call.StringRepresentation);
                 }
 
-                if (call.Repeat > 1)
+                if (call.NumberOfOccurrences > 1)
                 {
-                    writer.Write(" repeated ");
-                    writer.Write(call.Repeat);
+                    writer.Write(" ");
+                    writer.Write(call.NumberOfOccurrences);
                     writer.Write(" times");
                     writer.WriteLine();
                     writer.Write("...");
@@ -99,18 +97,21 @@ namespace FakeItEasy.Core
 
         private class CallInfo
         {
-            public CallInfo()
+            public CallInfo(IFakeObjectCall call, int callNumber, string stringRepresentation)
             {
-                this.Repeat = 1;
+                this.Call = call;
+                this.CallNumber = callNumber;
+                this.StringRepresentation = stringRepresentation;
+                this.NumberOfOccurrences = 1;
             }
 
-            public IFakeObjectCall Call { get; set; }
+            public IFakeObjectCall Call { get; }
 
-            public int CallNumber { get; set; }
+            public int CallNumber { get; }
 
-            public int Repeat { get; set; }
+            public int NumberOfOccurrences { get; set; }
 
-            public string StringRepresentation { get; set; }
+            public string StringRepresentation { get; }
 
             public int NumberOfDigitsInCallNumber()
             {

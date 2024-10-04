@@ -11,37 +11,14 @@ namespace FakeItEasy.Configuration
     /// <summary>
     ///   A collection of method arguments.
     /// </summary>
-#if FEATURE_BINARY_SERIALIZATION
-    [Serializable]
-#endif
-    [SuppressMessage("Microsoft.Naming", "CA1711:IdentifiersShouldNotHaveIncorrectSuffix", Justification = "Best name to describe the type.")]
     public class ArgumentCollection
-        : IEnumerable<object>
+        : IEnumerable<object?>
     {
         /// <summary>
         ///   The arguments this collection contains.
         /// </summary>
-        private readonly object[] arguments;
-
-        /// <summary>
-        ///   Initializes a new instance of the <see cref = "ArgumentCollection" /> class.
-        /// </summary>
-        /// <param name = "arguments">The arguments.</param>
-        /// <param name = "argumentNames">The argument names.</param>
-        [DebuggerStepThrough]
-        internal ArgumentCollection(object[] arguments, IEnumerable<string> argumentNames)
-        {
-            Guard.AgainstNull(arguments, nameof(arguments));
-            Guard.AgainstNull(argumentNames, nameof(argumentNames));
-
-            if (arguments.Length != argumentNames.Count())
-            {
-                throw new ArgumentException(ExceptionMessages.WrongNumberOfArgumentNamesMessage, nameof(argumentNames));
-            }
-
-            this.arguments = arguments;
-            this.ArgumentNames = argumentNames.ToArray();
-        }
+        private readonly object?[] arguments;
+        private readonly Lazy<string?[]> argumentNames;
 
         /// <summary>
         ///   Initializes a new instance of the <see cref = "ArgumentCollection" /> class.
@@ -49,9 +26,19 @@ namespace FakeItEasy.Configuration
         /// <param name = "arguments">The arguments.</param>
         /// <param name = "method">The method.</param>
         [DebuggerStepThrough]
-        internal ArgumentCollection(object[] arguments, MethodInfo method)
-            : this(arguments, GetArgumentNames(method))
+        internal ArgumentCollection(object?[] arguments, MethodInfo method)
         {
+            Guard.AgainstNull(arguments);
+            Guard.AgainstNull(method);
+
+            if (arguments.Length != method.GetParameters().Length)
+            {
+                throw new ArgumentException(ExceptionMessages.WrongNumberOfArguments);
+            }
+
+            this.arguments = arguments;
+            this.Method = method;
+            this.argumentNames = new Lazy<string?[]>(this.GetArgumentNames);
         }
 
         /// <summary>
@@ -60,34 +47,38 @@ namespace FakeItEasy.Configuration
         public int Count
         {
             [DebuggerStepThrough]
-            get { return this.arguments.Length; }
+            get => this.arguments.Length;
         }
 
         /// <summary>
         ///   Gets the names of the arguments in the list.
+        ///   It's possible to declare methods with anonymous parameters (for example, in F#),
+        ///   in which case the argument names will be <c>null</c>.
         /// </summary>
-        public IEnumerable<string> ArgumentNames { get; }
+        public IEnumerable<string?> ArgumentNames => this.argumentNames.Value;
+
+        internal MethodInfo Method { get; }
 
         /// <summary>
         ///   Gets the argument at the specified index.
         /// </summary>
         /// <param name = "argumentIndex">The index of the argument to get.</param>
         /// <returns>The argument at the specified index.</returns>
-        public object this[int argumentIndex]
+        public object? this[int argumentIndex]
         {
             [DebuggerStepThrough]
             get { return this.arguments[argumentIndex]; }
         }
 
         /// <summary>
-        ///   Returns an enumerator that iterates through the collection or arguments.
+        ///   Returns an enumerator that iterates through the collection of argument values.
         /// </summary>
         /// <returns>
-        ///   A <see cref = "T:System.Collections.Generic.IEnumerator`1" /> that can be used to iterate through the collection.
+        ///   A <see cref = "System.Collections.Generic.IEnumerator{T}" /> that can be used to iterate through the collection.
         /// </returns>
-        public IEnumerator<object> GetEnumerator()
+        public IEnumerator<object?> GetEnumerator()
         {
-            return this.arguments.Cast<object>().GetEnumerator();
+            return ((IEnumerable<object?>)this.arguments).GetEnumerator();
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -100,11 +91,14 @@ namespace FakeItEasy.Configuration
         /// </summary>
         /// <typeparam name = "T">The type of the argument to get.</typeparam>
         /// <param name = "index">The index of the argument.</param>
-        /// <returns>The argument at the specified index.</returns>
-        [SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "Used to cast the argument to the specified type.")]
+        /// <returns>
+        /// The argument at the specified index. Note that the value is taken from method's arguments and so may be <c>null</c>,
+        /// even if <typeparamref name="T"/> is non-nullable.
+        /// </returns>
+        [return: MaybeNull]
         public T Get<T>(int index)
         {
-            return (T)this.arguments[index];
+            return (T)this.arguments[index]!;
         }
 
         /// <summary>
@@ -112,39 +106,35 @@ namespace FakeItEasy.Configuration
         /// </summary>
         /// <typeparam name = "T">The type of the argument to get.</typeparam>
         /// <param name = "argumentName">The name of the argument.</param>
-        /// <returns>The argument with the specified name.</returns>
-        [SuppressMessage("Microsoft.Design", "CA1004:GenericMethodsShouldProvideTypeParameter", Justification = "Used to cast the argument to the specified type.")]
+        /// <returns>
+        /// The argument with the specified name. Note that the value is taken from method's arguments and so may be <c>null</c>,
+        /// even if <typeparamref name="T"/> is non-nullable.
+        /// </returns>
+        [return: MaybeNull]
         public T Get<T>(string argumentName)
         {
-            var index = this.GetArgumentIndex(argumentName);
+            Guard.AgainstNull(argumentName);
 
-            return (T)this.arguments[index];
+            var index = this.GetArgumentIndex(argumentName);
+            return this.Get<T>(index);
         }
 
-        internal object[] GetUnderlyingArgumentsArray()
+        internal object?[] GetUnderlyingArgumentsArray()
         {
             return this.arguments;
         }
 
-        [DebuggerStepThrough]
-        private static IEnumerable<string> GetArgumentNames(MethodInfo method)
-        {
-            Guard.AgainstNull(method, nameof(method));
-
-            return method.GetParameters().Select(x => x.Name);
-        }
+        private string?[] GetArgumentNames() => this.Method.GetParameters().Select(x => x.Name).ToArray();
 
         private int GetArgumentIndex(string argumentName)
         {
-            var index = 0;
-            foreach (var name in this.ArgumentNames)
+            var names = this.argumentNames.Value;
+            for (int index = 0; index < names.Length; ++index)
             {
-                if (name.Equals(argumentName, StringComparison.Ordinal))
+                if (string.Equals(names[index], argumentName, StringComparison.Ordinal))
                 {
                     return index;
                 }
-
-                index++;
             }
 
             throw new ArgumentException(ExceptionMessages.ArgumentNameDoesNotExist, nameof(argumentName));

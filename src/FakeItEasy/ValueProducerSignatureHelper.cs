@@ -1,5 +1,7 @@
 namespace FakeItEasy
 {
+    using System;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
 
@@ -17,8 +19,25 @@ namespace FakeItEasy
                 var fakeSignature = BuildSignatureDescription(callMethod);
                 var actionSignature = BuildSignatureDescription(valueProducerMethod);
 
-                throw new FakeConfigurationException("The faked method has the signature ({0}), but {2} was used with ({1}).".FormatInvariant(fakeSignature, actionSignature, nameOfFeature));
+                throw new FakeConfigurationException(ExceptionMessages.CallSignatureDoesNotMatchValueProducer(
+                    nameOfFeature,
+                    fakeSignature,
+                    actionSignature));
             }
+        }
+
+        internal static void AssertThatValuesSatisfyCallSignature(MethodInfo callMethod, object?[] values)
+        {
+            if (IsCallSignatureSatisfiedByValues(callMethod, values))
+            {
+                return;
+            }
+
+            var fakeSignature = BuildSignatureDescription(callMethod);
+            var actionSignature = BuildSignatureDescription(values);
+
+            throw new FakeConfigurationException(
+                ExceptionMessages.CallSignatureDoesNotMatchArguments(fakeSignature, actionSignature));
         }
 
         private static bool IsCallSignatureSatisfiedByValueProducerSignature(MethodInfo callMethod, MethodInfo valueProducerMethod)
@@ -44,9 +63,37 @@ namespace FakeItEasy
             return true;
         }
 
-        private static string BuildSignatureDescription(MethodInfo method)
+        private static bool IsCallSignatureSatisfiedByValues(MethodInfo callMethod, object?[] values)
         {
-            return method.GetParameters().ToCollectionString(x => x.ParameterType.FullName, ", ");
+            var callMethodParameterTypes = callMethod.GetParameters().Select(p => p.ParameterType).ToList();
+
+            if (callMethodParameterTypes.Count != values.Length)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < callMethodParameterTypes.Count; i++)
+            {
+                if (values[i] is null)
+                {
+                    if (callMethodParameterTypes[i].IsValueType)
+                    {
+                        return false;
+                    }
+                }
+                else if (!callMethodParameterTypes[i].IsInstanceOfType(values[i]))
+                {
+                    return false;
+                }
+            }
+
+            return true;
         }
+
+        private static string BuildSignatureDescription(MethodInfo method) =>
+            method.GetParameters().ToCollectionString(p => p.ParameterType.ToString(), ", ");
+
+        private static string BuildSignatureDescription(object?[] values) =>
+            values.ToCollectionString(v => v?.GetType()?.ToString() ?? "NULL", ", ");
     }
 }

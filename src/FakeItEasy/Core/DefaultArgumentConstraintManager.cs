@@ -3,69 +3,109 @@ namespace FakeItEasy.Core
     using System;
 
     internal class DefaultArgumentConstraintManager<T>
-        : IArgumentConstraintManager<T>
+        : ICapturableArgumentConstraintManager<T>
     {
-        private readonly Action<IArgumentConstraint> onConstraintCreated;
+        private readonly Action<MatchesConstraint> onConstraintCreated;
 
         public DefaultArgumentConstraintManager(Action<IArgumentConstraint> onConstraintCreated)
+            : this((MatchesConstraint constraint) => onConstraintCreated(constraint))
         {
-            this.onConstraintCreated = onConstraintCreated;
         }
 
-        public IArgumentConstraintManager<T> Not => new NotArgumentConstraintManager(this);
+        private DefaultArgumentConstraintManager(Action<MatchesConstraint> onConstraintCreated) =>
+            this.onConstraintCreated = onConstraintCreated;
+
+        public IArgumentConstraintManager<T> Not =>
+            new DefaultArgumentConstraintManager<T>(
+                constraint => this.onConstraintCreated(new NotMatchesConstraint(constraint)));
+
+        public INegatableArgumentConstraintManager<T> IsCapturedTo<TCapture>(Captured<T, TCapture> capturedArgument) =>
+            new DefaultArgumentConstraintManager<T>(
+                constraint => this.onConstraintCreated(new CapturesConstraint<TCapture>(constraint, capturedArgument)));
 
         public T Matches(Func<T, bool> predicate, Action<IOutputWriter> descriptionWriter)
         {
             this.onConstraintCreated(new MatchesConstraint(predicate, descriptionWriter));
-            return default(T);
+            return default!;
         }
 
-        private class NotArgumentConstraintManager
-            : IArgumentConstraintManager<T>
+        private class NotMatchesConstraint(MatchesConstraint constraint) : MatchesConstraint(
+                  argument => !constraint.IsValid(argument),
+                  writer =>
+                      {
+                          writer.Write("not ");
+                          constraint.WriteBareDescription(writer);
+                      })
         {
-            private readonly IArgumentConstraintManager<T> parent;
-
-            public NotArgumentConstraintManager(IArgumentConstraintManager<T> parent)
-            {
-                this.parent = parent;
-            }
-
-            public IArgumentConstraintManager<T> Not => new NotArgumentConstraintManager(this);
-
-            public T Matches(Func<T, bool> predicate, Action<IOutputWriter> descriptionWriter)
-            {
-                return this.parent.Matches(
-                    x => !predicate(x),
-                    x =>
-                    {
-                        x.Write("not ");
-                        descriptionWriter.Invoke(x);
-                    });
-            }
         }
 
-        private class MatchesConstraint
-            : IArgumentConstraint
+        private class CapturesConstraint<TCapture>(MatchesConstraint constraint, Captured<T, TCapture> capturedArgument)
+            : MatchesConstraint(argument => constraint.IsValid(argument), constraint.WriteBareDescription),
+              IHaveASideEffect
         {
-            private readonly Func<T, bool> predicate;
-            private readonly Action<IOutputWriter> descriptionWriter;
+            public void ApplySideEffect(object? argument) => capturedArgument.Add((T)argument!);
+        }
 
-            public MatchesConstraint(Func<T, bool> predicate, Action<IOutputWriter> descriptionWriter)
+        private class MatchesConstraint(Func<T, bool> predicate, Action<IOutputWriter> descriptionWriter)
+                        : ITypedArgumentConstraint
+        {
+            private static readonly bool IsNullable = typeof(T).IsNullable();
+
+            public Type Type => typeof(T);
+
+            public override string ToString() => this.GetDescription();
+
+            public void WriteDescription(IOutputWriter writer)
             {
-                this.predicate = predicate;
-                this.descriptionWriter = descriptionWriter;
+                writer.Write('<');
+                this.WriteBareDescription(writer);
+                writer.Write('>');
             }
 
-            void IArgumentConstraint.WriteDescription(IOutputWriter writer)
+            public bool IsValid(object? argument)
             {
-                writer.Write("<");
-                this.descriptionWriter.Invoke(writer);
-                writer.Write(">");
+                if (!IsValueValidForType(argument))
+                {
+                    return false;
+                }
+
+                try
+                {
+                    return predicate.Invoke((T)argument!);
+                }
+                catch (Exception ex)
+                {
+                    throw new UserCallbackException(ExceptionMessages.UserCallbackThrewAnException($"Argument matcher {this.GetDescription()}"), ex);
+                }
             }
 
-            bool IArgumentConstraint.IsValid(object argument)
+            public void WriteBareDescription(IOutputWriter writer)
             {
-                return (argument == null || argument is T) && this.predicate.Invoke((T)argument);
+                try
+                {
+                    descriptionWriter.Invoke(writer);
+                }
+                catch (Exception ex)
+                {
+                    throw new UserCallbackException(ExceptionMessages.UserCallbackThrewAnException("Argument matcher description"), ex);
+                }
+            }
+
+            private static bool IsValueValidForType(object? argument)
+            {
+                if (argument is null)
+                {
+                    return IsNullable;
+                }
+
+                return argument is T;
+            }
+
+            private string GetDescription()
+            {
+                var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
+                ((IArgumentConstraint)this).WriteDescription(writer);
+                return writer.Builder.ToString();
             }
         }
     }

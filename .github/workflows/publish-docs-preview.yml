@@ -1,0 +1,89 @@
+name: Publish docs preview
+run-name: "Publish docs preview for PR #${{ github.event.pull_request.number }}"
+on:
+  pull_request_target:
+    types: labeled
+
+jobs:
+
+  publish-docs-preview:
+    name: Publish docs preview
+    runs-on: ubuntu-22.04
+    if: "${{ github.event.label.name == ':eyes: publish-docs-preview' }}"
+    steps:
+
+      - name: Find CI workflow run for PR
+        id: find-workflow-run
+        uses: actions/github-script@v7
+        continue-on-error: true
+        with:
+          script: |
+            // Find the last successful workflow run for the current PR's head
+            const {owner, repo} = context.repo;
+            const runsResponse = await github.rest.actions.listWorkflowRuns({
+              owner,
+              repo,
+              workflow_id: 'ci.yml',
+              event: 'pull_request',
+              head_sha: '${{ github.event.pull_request.head.sha }}',
+              status: 'success'
+            });
+            const runs = runsResponse.data.workflow_runs;
+            runs.sort((a, b) => b.created_at.getTime() - a.created_at.getTime());
+            const run = runs[0];
+            if (!run) {
+              core.setFailed('Could not find a successful workflow run for the PR');
+              return;
+            }
+            core.setOutput('run-id', run.id);
+
+      - name: Download artifact
+        if: ${{ steps.find-workflow-run.outcome == 'success' }}
+        id: download-artifact
+        uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: documentation
+          path: documentation/
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.find-workflow-run.outputs.run-id }}
+
+      - name: Publish files
+        id: publish-files
+        if: ${{ steps.download-artifact.outcome == 'success' }}
+        continue-on-error: true
+        env:
+          AZURE_STORAGE_CONNECTION_STRING: ${{ secrets.DOCS_PREVIEW_STORAGE_CONNECTION_STRING }}
+        run: |
+          set -euo pipefail
+          destinationPath=docspreview/pr${{ github.event.pull_request.number }}/
+          az storage blob upload-batch --destination '$web' --destination-path $destinationPath --source documentation --overwrite true
+          docsPreviewUrl=${{ vars.DOCS_PREVIEW_BASE_URL }}/$destinationPath
+          echo Successfully uploaded docs preview to $docsPreviewUrl
+          echo "docs-preview-url=$docsPreviewUrl" >> $GITHUB_OUTPUT
+
+      - name: Set PR comment
+        id: set-pr-comment
+        if: ${{ always() }}
+        run: |
+          runUrl="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          if [[ "${{ steps.publish-files.outcome }}" == "success" ]]; then
+            comment=":white_check_mark: Publish docs preview: Successfully published [here](${{ steps.publish-files.outputs.docs-preview-url }})."
+          elif [[ "${{ steps.download-artifact.outcome }}" != "success" ]]; then
+            comment=":x: Publish docs preview: failed to download documentation artifact. [See workflow run for details]($runUrl)."
+          else
+            comment=":x: Publish docs preview: failed to publish. [See workflow run for details]($runUrl)."
+          fi
+          echo "pr-comment=$comment" >> $GITHUB_OUTPUT
+
+      - name: Add pull request comment
+        if: ${{ always() }}
+        uses: thollander/actions-comment-pull-request@v2
+        with:
+          message: ${{ steps.set-pr-comment.outputs.pr-comment }}
+
+      - name: Check outcome
+        run: |
+          if [[ "${{ steps.publish-files.outcome }}" != "success" ]]; then
+            exit 1
+          fi

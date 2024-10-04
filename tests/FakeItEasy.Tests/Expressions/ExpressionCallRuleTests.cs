@@ -50,15 +50,17 @@ namespace FakeItEasy.Tests.Expressions
         [Fact]
         public void Constructor_should_be_null_guarded()
         {
+#pragma warning disable CA1806 // Do not ignore method results
             Expression<Action> call = () => new ExpressionCallRule(this.callMatcher);
+#pragma warning restore CA1806 // Do not ignore method results
             call.Should().BeNullGuarded();
         }
 
         [Fact]
         public void Apply_should_call_the_applicator_with_the_incoming_call()
         {
-            IInterceptedFakeObjectCall callPassedToApplicator = null;
-            var callPassedToRule = FakeCall.Create<IFoo>("Bar");
+            IInterceptedFakeObjectCall? callPassedToApplicator = null;
+            var callPassedToRule = FakeCall.Create<IFoo>(x => x.Bar());
 
             var rule = this.CreateRule();
             rule.UseApplicator(x => callPassedToApplicator = x);
@@ -78,13 +80,15 @@ namespace FakeItEasy.Tests.Expressions
         }
 
         [Fact]
-        public void DescriptionOfValidCall_should_return_expressionMatcher_ToString()
+        public void DescribeCallOn_should_write_expressionMatcher_description()
         {
-            A.CallTo(() => this.callMatcher.DescriptionOfMatchingCall).Returns("foo");
+            var fakeWriter = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
+            A.CallTo(() => this.callMatcher.DescribeCallOn(A<IOutputWriter>._)).Invokes((IOutputWriter w) => w.Write("foo"));
 
             var rule = this.CreateRule();
 
-            rule.DescriptionOfValidCall.Should().Be("foo");
+            rule.WriteDescriptionOfValidCall(fakeWriter);
+            fakeWriter.Builder.ToString().Should().Be("foo");
         }
 
         [Fact]

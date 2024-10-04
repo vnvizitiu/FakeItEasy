@@ -5,30 +5,32 @@ namespace FakeItEasy.Tests.Configuration
     using System.Linq;
     using FakeItEasy.Configuration;
     using FakeItEasy.Core;
+    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
     using ExceptionFactory = System.Func<FakeItEasy.Core.IFakeObjectCall, System.Exception>;
 
-    public class AnyCallConfigurationTests : AutoInitializedFixture
+    public class AnyCallConfigurationTests
     {
-#pragma warning disable 649
-        [Fake]
-        private IConfigurationFactory configurationFactory;
+        private readonly IConfigurationFactory configurationFactory;
+        private readonly FakeManager fakeObject;
+        private readonly AnyCallCallRule callRule;
 
-        [Fake]
-        private FakeManager fakeObject;
+        private readonly AnyCallConfiguration configuration;
 
-        [Fake]
-        private AnyCallCallRule callRule;
+        public AnyCallConfigurationTests()
+        {
+            this.fakeObject = A.Fake<FakeManager>();
+            this.callRule = A.Fake<AnyCallCallRule>();
+            this.configurationFactory = A.Fake<IConfigurationFactory>();
+            this.configuration = new AnyCallConfiguration(this.fakeObject, this.callRule, this.configurationFactory);
+        }
 
-        [UnderTest]
-        private AnyCallConfiguration configuration;
-#pragma warning restore 649
-
-        public static IEnumerable<object[]> CallSpecificationActions =>
+        public static IEnumerable<object?[]> CallSpecificationActions =>
             TestCases.FromObject<Action<IAnyCallConfigurationWithNoReturnTypeSpecified>>(
                 configuration => configuration.WithReturnType<int>(),
                 configuration => configuration.WithNonVoidReturnType(),
+                configuration => configuration.WithVoidReturnType(),
                 configuration => configuration.Where(call => true),
                 configuration => configuration.WhenArgumentsMatch(args => true));
 
@@ -43,30 +45,6 @@ namespace FakeItEasy.Tests.Configuration
 
             // Assert
             returnConfig.Should().BeSameAs(result);
-        }
-
-        [Fact]
-        public void WithReturnType_should_set_the_type_to_the_configured_rule()
-        {
-            // Arrange
-
-            // Act
-            this.configuration.WithReturnType<string>();
-
-            // Assert
-            this.callRule.ApplicableToMembersWithReturnType.Should().Be(typeof(string));
-        }
-
-        [Fact]
-        public void WithNonVoidReturnType_should_cause_the_call_rule_to_apply_to_all_return_types()
-        {
-            // Arrange
-
-            // Act
-            this.configuration.WithNonVoidReturnType();
-
-            // Assert
-            this.callRule.ApplicableToAllNonVoidReturnTypes.Should().BeTrue();
         }
 
         [Fact]
@@ -87,7 +65,7 @@ namespace FakeItEasy.Tests.Configuration
         {
             // Arrange
             var factoryConfig = this.StubVoidConfig();
-            var doesNothingConfig = A.Fake<IAfterCallSpecifiedConfiguration>();
+            var doesNothingConfig = A.Fake<IAfterCallConfiguredConfiguration<IVoidConfiguration>>();
             A.CallTo(() => factoryConfig.DoesNothing()).Returns(doesNothingConfig);
 
             // Act
@@ -117,7 +95,7 @@ namespace FakeItEasy.Tests.Configuration
         {
             // Arrange
             var factoryConfig = this.StubVoidConfig();
-            var throwsConfig = A.Fake<IAfterCallSpecifiedConfiguration>();
+            var throwsConfig = A.Fake<IAfterCallConfiguredConfiguration<IVoidConfiguration>>();
 
             A.CallTo(() => factoryConfig.Throws(A<ExceptionFactory>._)).Returns(throwsConfig);
 
@@ -149,7 +127,7 @@ namespace FakeItEasy.Tests.Configuration
             Action<IFakeObjectCall> invocation = x => { };
 
             var factoryConfig = this.StubVoidConfig();
-            var invokesConfig = A.Fake<IVoidConfiguration>();
+            var invokesConfig = A.Fake<IVoidAfterCallbackConfiguredConfiguration>();
 
             A.CallTo(() => factoryConfig.Invokes(invocation)).Returns(invokesConfig);
 
@@ -178,7 +156,7 @@ namespace FakeItEasy.Tests.Configuration
         {
             // Arrange
             var factoryConfig = this.StubVoidConfig();
-            var callsBaseConfig = A.Fake<IAfterCallSpecifiedConfiguration>();
+            var callsBaseConfig = A.Fake<IAfterCallConfiguredConfiguration<IVoidConfiguration>>();
 
             A.CallTo(() => factoryConfig.CallsBaseMethod()).Returns(callsBaseConfig);
 
@@ -193,10 +171,10 @@ namespace FakeItEasy.Tests.Configuration
         public void AssignsOutAndRefParametersLazily_delegates_to_configuration_produced_by_factory()
         {
             // Arrange
-            Func<IFakeObjectCall, object[]> valueProducer = x => new object[] { "a", "b" };
+            Func<IFakeObjectCall, ICollection<object?>> valueProducer = x => new object[] { "a", "b" };
 
             var factoryConfig = this.StubVoidConfig();
-            var nextConfig = A.Fake<IAfterCallSpecifiedConfiguration>();
+            var nextConfig = A.Fake<IAfterCallConfiguredConfiguration<IVoidConfiguration>>();
 
             A.CallTo(() => factoryConfig.AssignsOutAndRefParametersLazily(valueProducer)).Returns(nextConfig);
 
@@ -211,10 +189,10 @@ namespace FakeItEasy.Tests.Configuration
         public void AssignsOutAndRefParametersLazily_returns_configuration_produced_by_factory()
         {
             // Arrange
-            Func<IFakeObjectCall, object[]> valueProducer = x => new object[] { "a", "b" };
+            Func<IFakeObjectCall, ICollection<object?>> valueProducer = x => new object[] { "a", "b" };
 
             var factoryConfig = this.StubVoidConfig();
-            var nextConfig = A.Fake<IAfterCallSpecifiedConfiguration>();
+            var nextConfig = A.Fake<IAfterCallConfiguredConfiguration<IVoidConfiguration>>();
 
             A.CallTo(() => factoryConfig.AssignsOutAndRefParametersLazily(valueProducer)).Returns(nextConfig);
 
@@ -223,19 +201,6 @@ namespace FakeItEasy.Tests.Configuration
 
             // Assert
             result.Should().BeSameAs(nextConfig);
-        }
-
-        [Fact]
-        public void Assert_delegates_to_configuration_produced_by_factory()
-        {
-            // Arrange
-            var factoryConfig = this.StubVoidConfig();
-
-            // Act
-            this.configuration.MustHaveHappened(Repeated.AtLeast.Twice);
-
-            // Assert
-            A.CallTo(() => factoryConfig.MustHaveHappened(A<Repeated>._)).MustHaveHappened();
         }
 
         [Fact]
@@ -306,7 +271,7 @@ namespace FakeItEasy.Tests.Configuration
 
         private IVoidArgumentValidationConfiguration StubVoidConfig()
         {
-            var result = A.Fake<IVoidArgumentValidationConfiguration>();
+            var result = A.Fake<IAnyCallConfigurationWithVoidReturnType>();
 
             A.CallTo(() => this.configurationFactory.CreateConfiguration(this.fakeObject, this.callRule)).Returns(result);
 

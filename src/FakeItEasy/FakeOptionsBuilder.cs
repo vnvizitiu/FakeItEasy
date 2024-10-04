@@ -8,7 +8,7 @@ namespace FakeItEasy
     /// A base implementation for classes that can build options for fakes of type <typeparamref name="TFake"/>.
     /// </summary>
     /// <typeparam name="TFake">The type of fake.</typeparam>
-    public abstract class FakeOptionsBuilder<TFake> : IFakeOptionsBuilder
+    public abstract class FakeOptionsBuilder<TFake> : IFakeOptionsBuilder where TFake : class
     {
         /// <summary>
         /// Gets the priority of the options builder. When multiple builders that apply to
@@ -25,8 +25,7 @@ namespace FakeItEasy
         /// <c>true</c> if <paramref name="type"/> is <typeparamref name="TFake"/>.
         /// Otherwise <c>false</c>.
         /// </returns>
-        [SuppressMessage("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes",
-            Justification = "Explicit implementation reduces the chance of misusing object. Explicit methods are superseded by BuildOptions(IFakeOptions<TFake>)")]
+        [SuppressMessage("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes", Justification = "Explicit implementation reduces the chance of misusing object. Explicit methods are superseded by BuildOptions(IFakeOptions<TFake>)")]
         bool IFakeOptionsBuilder.CanBuildOptionsForFakeOfType(Type type)
         {
             return type == typeof(TFake);
@@ -39,15 +38,13 @@ namespace FakeItEasy
         /// <param name="typeOfFake">The type the fake object represents.</param>
         /// <param name="options">The fake options to manipulate.</param>
         /// <exception cref="InvalidOperationException">When <paramref name="typeOfFake"/> is not <typeparamref name="TFake"/>.</exception>
-        [SuppressMessage("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes",
-            Justification = "Explicit implementation reduces the chance of misusing object. Explicit methods are superseded by BuildOptions(IFakeOptions<TFake>)")]
+        [SuppressMessage("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes", Justification = "Explicit implementation reduces the chance of misusing object. Explicit methods are superseded by BuildOptions(IFakeOptions<TFake>)")]
         void IFakeOptionsBuilder.BuildOptions(Type typeOfFake, IFakeOptions options)
         {
             if (!((IFakeOptionsBuilder)this).CanBuildOptionsForFakeOfType(typeOfFake))
             {
                 throw new InvalidOperationException(
-                    "Specified type '{0}' is not valid. Only '{1}' is allowed."
-                        .FormatInvariant(typeOfFake.FullNameCSharp(), typeof(TFake).FullNameCSharp()));
+                    $"Specified type {typeOfFake} is not valid. Only {typeof(TFake)} is allowed.");
             }
 
             this.BuildOptions((IFakeOptions<TFake>)options);

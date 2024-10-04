@@ -1,4 +1,4 @@
-﻿# EditorConfig is awesome: http://EditorConfig.org
+# EditorConfig is awesome: https://editorconfig.org
 
 # Top-most EditorConfig file
 root = true
@@ -17,10 +17,6 @@ trim_trailing_whitespace = true
 max_line_length = 160
 
 insert_final_newline = true
-
-[*.rb]
-# 2-column space indentation
-indent_size = 2
 
 [*.{csproj,vbproj}]
 insert_final_newline = false

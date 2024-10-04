@@ -10,13 +10,11 @@ namespace FakeItEasy.Creation.CastleDynamicProxy
     /// <summary>
     /// An adapter that adapts an <see cref="IInvocation" /> to a <see cref="IFakeObjectCall" />.
     /// </summary>
-#if FEATURE_BINARY_SERIALIZATION
-    [Serializable]
-#endif
     internal class CastleInvocationCallAdapter
-        : IInterceptedFakeObjectCall, ICompletedFakeObjectCall
+        : InterceptedFakeObjectCall
     {
         private readonly IInvocation invocation;
+        private readonly object[] originalArguments;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="CastleInvocationCallAdapter"/> class.
@@ -26,46 +24,49 @@ namespace FakeItEasy.Creation.CastleDynamicProxy
         public CastleInvocationCallAdapter(IInvocation invocation)
         {
             this.invocation = invocation;
+            var savedArguments = new object[invocation.Arguments.Length];
+            Array.Copy(invocation.Arguments, savedArguments, savedArguments.Length);
+            this.originalArguments = savedArguments;
             this.Method = invocation.Method;
-
-            this.Arguments = new ArgumentCollection(invocation.Arguments, this.Method);
-
-            SequenceNumberManager.RecordSequenceNumber(this);
+            this.Arguments = new ArgumentCollection(invocation.Arguments, invocation.Method);
         }
-
-        /// <summary>
-        /// Gets the value set to be returned from the call.
-        /// </summary>
-        public object ReturnValue => this.invocation.ReturnValue;
 
         /// <summary>
         /// Gets the method that's called.
         /// </summary>
-        public MethodInfo Method { get; }
+        public override MethodInfo Method { get; }
 
         /// <summary>
         /// Gets the arguments used in the call.
         /// </summary>
-        public ArgumentCollection Arguments { get; }
+        public override ArgumentCollection Arguments { get; }
 
         /// <summary>
         /// Gets the faked object the call is performed on.
         /// </summary>
-        public object FakedObject => this.invocation.Proxy;
+        public override object FakedObject => this.invocation.Proxy;
+
+        public override object? ReturnValue
+        {
+            get => this.invocation.ReturnValue;
+            set => this.invocation.ReturnValue = value;
+        }
 
         /// <summary>
-        /// Freezes the call so that it can no longer be modified.
+        /// Returns a completed call suitable for being recorded.
         /// </summary>
         /// <returns>A completed fake object call.</returns>
-        public ICompletedFakeObjectCall AsReadOnly()
+        public override CompletedFakeObjectCall ToCompletedCall()
         {
-            return this;
+            return new CompletedFakeObjectCall(
+                this,
+                this.originalArguments);
         }
 
         /// <summary>
         /// Calls the base method, should not be used with interface types.
         /// </summary>
-        public void CallBaseMethod()
+        public override void CallBaseMethod()
         {
             this.invocation.Proceed();
         }
@@ -75,26 +76,16 @@ namespace FakeItEasy.Creation.CastleDynamicProxy
         /// </summary>
         /// <param name="index">The index of the argument to set the value to.</param>
         /// <param name="value">The value to set to the argument.</param>
-        public void SetArgumentValue(int index, object value)
+        public override void SetArgumentValue(int index, object? value)
         {
             this.invocation.SetArgumentValue(index, value);
-        }
-
-        /// <summary>
-        /// Sets the return value of the call.
-        /// </summary>
-        /// <param name="returnValue">The return value.</param>
-        [DebuggerStepThrough]
-        public void SetReturnValue(object returnValue)
-        {
-            this.invocation.ReturnValue = returnValue;
         }
 
         /// <summary>
         /// Returns a description of the call.
         /// </summary>
         /// <returns>
-        /// A <see cref="System.String"/> that represents this instance.
+        /// A <see cref="string"/> that represents this instance.
         /// </returns>
         public override string ToString()
         {

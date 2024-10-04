@@ -1,21 +1,21 @@
 namespace FakeItEasy.Tests
 {
-    using System.Collections.Generic;
-    using System.Linq;
     using System.Linq.Expressions;
     using FakeItEasy.Configuration;
     using FakeItEasy.Core;
+    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
-    public class FakeObjectCallExtensionsTests : ConfigurableServiceLocatorTestBase
+    public class FakeObjectCallExtensionsTests
     {
         [Fact]
         public void GetArgument_should_delegate_to_the_argument_collections_get_method_when_using_index()
         {
             // Arrange
             var call = A.Fake<IFakeObjectCall>();
-            var arguments = new ArgumentCollection(new object[] { 1, 2 }, new[] { "argument1", "argument2" });
+            var method = FakeMethodHelper.CreateFakeMethod(new[] { "argument1", "argument2" });
+            var arguments = new ArgumentCollection(new object[] { 1, 2 }, method);
             A.CallTo(() => call.Arguments).Returns(arguments);
 
             // Act
@@ -30,7 +30,8 @@ namespace FakeItEasy.Tests
         {
             // Arrange
             var call = A.Fake<IFakeObjectCall>();
-            var arguments = new ArgumentCollection(new object[] { 1, 2 }, new[] { "argument1", "argument2" });
+            var method = FakeMethodHelper.CreateFakeMethod(new[] { "argument1", "argument2" });
+            var arguments = new ArgumentCollection(new object[] { 1, 2 }, method);
             A.CallTo(() => call.Arguments).Returns(arguments);
 
             // Act
@@ -68,7 +69,7 @@ namespace FakeItEasy.Tests
         public void GetDescription_should_render_method_name_and_empty_arguments_list_when_call_has_no_arguments()
         {
             // Arrange
-            var call = FakeCall.Create<object>("GetType");
+            var call = FakeCall.Create<object>(x => x.GetType());
 
             // Act
             var description = call.GetDescription();
@@ -100,7 +101,7 @@ namespace FakeItEasy.Tests
             var description = call.GetDescription();
 
             // Assert
-            description.Should().Be("FakeItEasy.Tests.IFoo.Bar(<NULL>, 123)");
+            description.Should().Be("FakeItEasy.Tests.IFoo.Bar(NULL, 123)");
         }
 
         [Fact]
@@ -113,81 +114,36 @@ namespace FakeItEasy.Tests
             var description = call.GetDescription();
 
             // Assert
-            description.Should().Be("FakeItEasy.Tests.IFoo.Bar(<string.Empty>, 123)");
+            description.Should().Be("FakeItEasy.Tests.IFoo.Bar(string.Empty, 123)");
         }
 
         [Fact]
-        public void Write_should_be_null_guarded()
-        {
-            Expression<System.Action> call = () => Enumerable.Empty<IFakeObjectCall>().Write(A.Dummy<IOutputWriter>());
-            call.Should().BeNullGuarded();
-        }
-
-        [Fact]
-        public void Write_should_call_writer_registered_in_container_with_calls()
+        public void GetDescription_should_render_argument_collection_elements_when_collection_has_5_elements_or_less()
         {
             // Arrange
-            var calls = A.CollectionOfFake<IFakeObjectCall>(2);
-
-            var callWriter = A.Fake<CallWriter>();
-            this.StubResolve(callWriter);
-
-            var writer = A.Dummy<IOutputWriter>();
+            var call = CreateFakeCallToFooDotBar(1, new[] { 1, 2, 3, 4, 5 });
 
             // Act
-            calls.Write(writer);
+            var description = call.GetDescription();
 
             // Assert
-            A.CallTo(() => callWriter.WriteCalls(calls, writer)).MustHaveHappened();
+            description.Should().Be("FakeItEasy.Tests.IFoo.Bar(1, [1, 2, 3, 4, 5])");
         }
 
         [Fact]
-        public void WriteToConsole_should_be_null_guarded()
+        public void GetDescription_should_render_argument_collection_first_and_last_elements_when_collection_has_more_than_5_elements()
         {
             // Arrange
+            var call = CreateFakeCallToFooDotBar(1, new[] { 1, 2, 3, 4, 5, 6 });
 
             // Act
+            var description = call.GetDescription();
 
             // Assert
-            Expression<System.Action> call = () => Enumerable.Empty<IFakeObjectCall>().WriteToConsole();
-            call.Should().BeNullGuarded();
+            description.Should().Be("FakeItEasy.Tests.IFoo.Bar(1, [1, 2, … (2 more elements) …, 5, 6])");
         }
 
-        [Fact]
-        public void WriteToConsole_should_call_writer_registered_in_container_with_calls()
-        {
-            // Arrange
-            var calls = A.CollectionOfFake<IFakeObjectCall>(2);
-
-            var callWriter = A.Fake<CallWriter>();
-            this.StubResolve(callWriter);
-
-            // Act
-            calls.WriteToConsole();
-
-            // Assert
-            A.CallTo(() => callWriter.WriteCalls(calls, A<IOutputWriter>._)).MustHaveHappened();
-        }
-
-        [Fact]
-        public void WriteToConsole_should_call_writer_registered_in_container_with_console_out()
-        {
-            // Arrange
-            var calls = A.CollectionOfFake<IFakeObjectCall>(2);
-
-            var callWriter = A.Fake<CallWriter>();
-            this.StubResolve(callWriter);
-
-            // Act
-            calls.WriteToConsole();
-
-            // Assert
-            A.CallTo(() => callWriter.WriteCalls(A<IEnumerable<IFakeObjectCall>>._, A<IOutputWriter>._)).MustHaveHappened();
-        }
-
-        private static FakeCall CreateFakeCallToFooDotBar(object argument1, object argument2)
-        {
-            return FakeCall.Create<IFoo>("Bar", new[] { typeof(object), typeof(object) }, new[] { argument1, argument2 });
-        }
+        private static FakeCall CreateFakeCallToFooDotBar(object? argument1, object argument2) =>
+            FakeCall.Create<IFoo>(x => x.Bar(argument1, argument2));
     }
 }

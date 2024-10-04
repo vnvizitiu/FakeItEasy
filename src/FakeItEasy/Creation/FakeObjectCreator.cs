@@ -1,121 +1,281 @@
 namespace FakeItEasy.Creation
 {
     using System;
+    using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Reflection;
     using FakeItEasy.Core;
+    using FakeItEasy.Creation.CastleDynamicProxy;
+    using FakeItEasy.Creation.DelegateProxies;
 
-    internal class FakeObjectCreator
+    internal class FakeObjectCreator : IFakeObjectCreator, IMethodInterceptionValidator
     {
-        private readonly FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory;
-        private readonly IProxyGenerator proxyGenerator;
-        private readonly IExceptionThrower thrower;
+        private readonly DefaultCreationStrategy defaultCreationStrategy;
+        private readonly DelegateCreationStrategy delegateCreationStrategy;
 
-        public FakeObjectCreator(IProxyGenerator proxyGenerator, IExceptionThrower thrower, FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory)
+        public FakeObjectCreator(
+            FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory,
+            IMethodInterceptionValidator castleMethodInterceptionValidator,
+            IMethodInterceptionValidator delegateMethodInterceptionValidator)
         {
-            this.proxyGenerator = proxyGenerator;
-            this.thrower = thrower;
-            this.fakeCallProcessorProviderFactory = fakeCallProcessorProviderFactory;
+            this.defaultCreationStrategy = new DefaultCreationStrategy(castleMethodInterceptionValidator, fakeCallProcessorProviderFactory);
+            this.delegateCreationStrategy = new DelegateCreationStrategy(delegateMethodInterceptionValidator, fakeCallProcessorProviderFactory);
         }
 
-        public object CreateFake(Type typeOfFake, IProxyOptions proxyOptions, IDummyValueCreationSession session, bool throwOnFailure)
+        public CreationResult CreateFake(
+            Type typeOfFake,
+            IProxyOptions proxyOptions,
+            IDummyValueResolver resolver,
+            LoopDetectingResolutionContext resolutionContext)
         {
-            var result = this.GenerateProxy(typeOfFake, proxyOptions, proxyOptions.ArgumentsForConstructor);
-
-            if (throwOnFailure)
+            if (!resolutionContext.TryBeginToResolve(typeOfFake))
             {
-                this.AssertThatProxyWasGeneratedWhenArgumentsForConstructorAreSpecified(typeOfFake, result, proxyOptions);
+                return CreationResult.FailedToCreateFake(typeOfFake, "Recursive dependency detected. Already resolving " + typeOfFake + '.');
             }
 
-            if (!result.ProxyWasSuccessfullyGenerated && proxyOptions.ArgumentsForConstructor == null)
+            try
             {
-                result = this.TryCreateFakeWithDummyArgumentsForConstructor(typeOfFake, proxyOptions, session, result.ReasonForFailure, throwOnFailure);
+                return this.CreateFakeWithoutLoopDetection(
+                    typeOfFake,
+                    proxyOptions,
+                    resolver,
+                    resolutionContext);
             }
-
-            return result != null ? result.GeneratedProxy : null;
-        }
-
-        private static ResolvedConstructor[] ResolveConstructors(Type typeOfFake, IDummyValueCreationSession session)
-        {
-            return (from constructor in GetUsableConstructorsInOrder(typeOfFake)
-                    let constructorAndArguments = ResolveConstructorArguments(constructor, session)
-                    select constructorAndArguments).ToArray();
-        }
-
-        private static IEnumerable<ConstructorInfo> GetUsableConstructorsInOrder(Type type)
-        {
-            return type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance)
-                .Where(x => x.GetParameters().Length > 0)
-                .OrderByDescending(x => x.GetParameters().Length);
-        }
-
-        private static ResolvedConstructor ResolveConstructorArguments(ConstructorInfo constructor, IDummyValueCreationSession session)
-        {
-            var resolvedArguments = new List<ResolvedArgument>();
-
-            foreach (var argument in constructor.GetParameters())
+            finally
             {
-                object result;
-
-                var resolvedArgument = new ResolvedArgument
-                                           {
-                                               WasResolved = session.TryResolveDummyValue(argument.ParameterType, out result),
-                                               ResolvedValue = result,
-                                               ArgumentType = argument.ParameterType
-                                           };
-
-                resolvedArguments.Add(resolvedArgument);
-            }
-
-            return new ResolvedConstructor
-                       {
-                           Arguments = resolvedArguments.ToArray()
-                       };
-        }
-
-        private void AssertThatProxyWasGeneratedWhenArgumentsForConstructorAreSpecified(Type typeOfFake, ProxyGeneratorResult result, IProxyOptions proxyOptions)
-        {
-            if (!result.ProxyWasSuccessfullyGenerated && proxyOptions.ArgumentsForConstructor != null)
-            {
-                this.thrower.ThrowFailedToGenerateProxyWithArgumentsForConstructor(typeOfFake, result.ReasonForFailure);
+                resolutionContext.EndResolve(typeOfFake);
             }
         }
 
-        private ProxyGeneratorResult TryCreateFakeWithDummyArgumentsForConstructor(Type typeOfFake, IProxyOptions proxyOptions, IDummyValueCreationSession session, string failReasonForDefaultConstructor, bool throwOnFailure)
+        public CreationResult CreateFakeWithoutLoopDetection(
+            Type typeOfFake,
+            IProxyOptions proxyOptions,
+            IDummyValueResolver resolver,
+            LoopDetectingResolutionContext resolutionContext)
         {
-            var constructors = ResolveConstructors(typeOfFake, session);
-
-            foreach (var constructor in constructors.Where(x => x.WasSuccessfullyResolved))
+            if (typeOfFake.IsInterface)
             {
-                var result = this.GenerateProxy(typeOfFake, proxyOptions, constructor.Arguments.Select(x => x.ResolvedValue));
+                return this.defaultCreationStrategy.CreateFakeInterface(typeOfFake, proxyOptions);
+            }
 
-                if (result.ProxyWasSuccessfullyGenerated)
+            return DelegateCreationStrategy.IsResponsibleForCreating(typeOfFake)
+                ? this.delegateCreationStrategy.CreateFake(typeOfFake, proxyOptions)
+                : this.defaultCreationStrategy.CreateFake(typeOfFake, proxyOptions, resolver, resolutionContext);
+        }
+
+        [SuppressMessage("Microsoft.Design", "CA1021:AvoidOutParameters", MessageId = "2#", Justification = "Seems appropriate here.")]
+        public bool MethodCanBeInterceptedOnInstance(MethodInfo method, object? callTarget, [NotNullWhen(false)] out string? failReason)
+        {
+            if (callTarget is not null && DelegateCreationStrategy.IsResponsibleForCreating(callTarget.GetType()))
+            {
+                return this.delegateCreationStrategy.MethodCanBeInterceptedOnInstance(method, callTarget, out failReason);
+            }
+
+            return this.defaultCreationStrategy.MethodCanBeInterceptedOnInstance(method, callTarget, out failReason);
+        }
+
+        private class DelegateCreationStrategy
+        {
+            private readonly FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory;
+            private readonly IMethodInterceptionValidator methodInterceptionValidator;
+
+            public DelegateCreationStrategy(
+                IMethodInterceptionValidator methodInterceptionValidator,
+                FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory)
+            {
+                this.methodInterceptionValidator = methodInterceptionValidator;
+                this.fakeCallProcessorProviderFactory = fakeCallProcessorProviderFactory;
+            }
+
+            public static bool IsResponsibleForCreating(Type typeOfFake) => typeof(Delegate).IsAssignableFrom(typeOfFake);
+
+            public CreationResult CreateFake(Type typeOfFake, IProxyOptions proxyOptions)
+            {
+                if (proxyOptions.Attributes.Any())
                 {
-                    return result;
+                    return CreationResult.FailedToCreateFake(typeOfFake, "Faked delegates cannot have custom attributes applied to them.");
                 }
 
-                constructor.ReasonForFailure = result.ReasonForFailure;
+                if (proxyOptions.ArgumentsForConstructor is not null && proxyOptions.ArgumentsForConstructor.Any())
+                {
+                    return CreationResult.FailedToCreateFake(typeOfFake, "Faked delegates cannot be made using explicit constructor arguments.");
+                }
+
+                if (proxyOptions.AdditionalInterfacesToImplement.Count != 0)
+                {
+                    return CreationResult.FailedToCreateFake(typeOfFake, "Faked delegates cannot be made to implement additional interfaces.");
+                }
+
+                var fakeCallProcessorProvider = this.fakeCallProcessorProviderFactory(typeOfFake, proxyOptions);
+                var proxyGeneratorResult = DelegateProxyGenerator.GenerateProxy(typeOfFake, fakeCallProcessorProvider);
+
+                return proxyGeneratorResult.ProxyWasSuccessfullyGenerated
+                    ? CreationResult.SuccessfullyCreated(proxyGeneratorResult.GeneratedProxy)
+                    : CreationResult.FailedToCreateFake(typeOfFake, proxyGeneratorResult.ReasonForFailure!);
             }
 
-            if (throwOnFailure)
-            {
-                this.thrower.ThrowFailedToGenerateProxyWithResolvedConstructors(typeOfFake, failReasonForDefaultConstructor, constructors);
-            }
-
-            return null;
+            public bool MethodCanBeInterceptedOnInstance(MethodInfo method, object callTarget, [NotNullWhen(false)]out string? failReason) =>
+                this.methodInterceptionValidator.MethodCanBeInterceptedOnInstance(method, callTarget, out failReason);
         }
 
-        private ProxyGeneratorResult GenerateProxy(Type typeOfFake, IProxyOptions proxyOptions, IEnumerable<object> argumentsForConstructor)
+        private class DefaultCreationStrategy
         {
-            var fakeCallProcessorProvider = this.fakeCallProcessorProviderFactory(typeOfFake, proxyOptions);
+            private readonly FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory;
+            private readonly IMethodInterceptionValidator methodInterceptionValidator;
+            private readonly ConcurrentDictionary<Type, Type[]> parameterTypesCache;
 
-            return this.proxyGenerator.GenerateProxy(
+            public DefaultCreationStrategy(
+                IMethodInterceptionValidator methodInterceptionValidator,
+                FakeCallProcessorProvider.Factory fakeCallProcessorProviderFactory)
+            {
+                this.methodInterceptionValidator = methodInterceptionValidator;
+                this.fakeCallProcessorProviderFactory = fakeCallProcessorProviderFactory;
+                this.parameterTypesCache = new ConcurrentDictionary<Type, Type[]>();
+            }
+
+            public CreationResult CreateFakeInterface(Type typeOfFake, IProxyOptions proxyOptions)
+            {
+                if (proxyOptions.ArgumentsForConstructor is not null)
+                {
+                    throw new ArgumentException(DynamicProxyMessages.ArgumentsForConstructorOnInterfaceType);
+                }
+
+                var fakeCallProcessorProvider = this.fakeCallProcessorProviderFactory(typeOfFake, proxyOptions);
+                var proxyGeneratorResult = CastleDynamicProxyGenerator.GenerateInterfaceProxy(
+                    typeOfFake,
+                    proxyOptions.AdditionalInterfacesToImplement,
+                    proxyOptions.Attributes,
+                    fakeCallProcessorProvider);
+                return proxyGeneratorResult.ProxyWasSuccessfullyGenerated
+                    ? CreationResult.SuccessfullyCreated(proxyGeneratorResult.GeneratedProxy)
+                    : CreationResult.FailedToCreateFake(typeOfFake, proxyGeneratorResult.ReasonForFailure!);
+            }
+
+            public CreationResult CreateFake(
+                Type typeOfFake,
+                IProxyOptions proxyOptions,
+                IDummyValueResolver resolver,
+                LoopDetectingResolutionContext resolutionContext)
+            {
+                if (!CastleDynamicProxyGenerator.CanGenerateProxy(typeOfFake, out string? reasonCannotGenerate))
+                {
+                    return CreationResult.FailedToCreateFake(typeOfFake, reasonCannotGenerate);
+                }
+
+                if (proxyOptions.ArgumentsForConstructor is not null)
+                {
+                    var proxyGeneratorResult = this.GenerateProxy(typeOfFake, proxyOptions, proxyOptions.ArgumentsForConstructor);
+
+                    return proxyGeneratorResult.ProxyWasSuccessfullyGenerated
+                        ? CreationResult.SuccessfullyCreated(proxyGeneratorResult.GeneratedProxy)
+                        : CreationResult.FailedToCreateFake(typeOfFake, proxyGeneratorResult.ReasonForFailure!);
+                }
+
+                return this.TryCreateFakeWithDummyArgumentsForConstructor(
+                    typeOfFake,
+                    proxyOptions,
+                    resolver,
+                    resolutionContext);
+            }
+
+            public bool MethodCanBeInterceptedOnInstance(MethodInfo method, object? callTarget, [NotNullWhen(false)]out string? failReason) =>
+                this.methodInterceptionValidator.MethodCanBeInterceptedOnInstance(method, callTarget, out failReason);
+
+            private static IEnumerable<Type[]> GetUsableParameterTypeListsInOrder(Type type)
+            {
+                var allConstructors = type.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance);
+
+                // Always try the parameterless constructor even if there are no constructors on the type. Some proxy generators
+                // can proxy types without constructors, such as interfaces.
+                if (allConstructors.Length == 0)
+                {
+                    yield return Type.EmptyTypes;
+                    yield break;
+                }
+
+                // Offer up all the constructors as possibilities.
+                // The 0-length constructor has always been tried first, which is advantageous because it's very easy to
+                // resolve the arguments. On the other hand, it can result in a less-configurable, Fake with more concrete
+                // (non-Faked) collaborators.
+                foreach (var parameterTypeList in allConstructors
+                    .Select(c => c.GetParameters())
+                    .OrderByDescending(pa => pa.Length == 0 ? int.MaxValue : pa.Length)
+                    .Select(pa => pa.Select(p => p.ParameterType).ToArray()))
+                {
+                    yield return parameterTypeList;
+                }
+            }
+
+            private static IEnumerable<object?> GetArgumentsForConstructor(ResolvedConstructor constructor) =>
+                constructor.Arguments.Select(x => x.ResolvedValue);
+
+            private CreationResult TryCreateFakeWithDummyArgumentsForConstructor(
+                Type typeOfFake,
+                IProxyOptions proxyOptions,
+                IDummyValueResolver resolver,
+                LoopDetectingResolutionContext resolutionContext)
+            {
+                // Save the constructors as we try them. Avoids eager evaluation and double evaluation
+                // of constructors enumerable.
+                var consideredConstructors = new List<ResolvedConstructor>();
+
+                if (this.parameterTypesCache.TryGetValue(typeOfFake, out Type[]? cachedParameterTypes))
+                {
+                    var constructor = new ResolvedConstructor(cachedParameterTypes, resolver, resolutionContext);
+                    if (constructor.WasSuccessfullyResolved)
+                    {
+                        var argumentsForConstructor = GetArgumentsForConstructor(constructor);
+                        var result = this.GenerateProxy(typeOfFake, proxyOptions, argumentsForConstructor);
+
+                        if (result.ProxyWasSuccessfullyGenerated)
+                        {
+                            return CreationResult.SuccessfullyCreated(result.GeneratedProxy);
+                        }
+
+                        constructor.ReasonForFailure = result.ReasonForFailure!;
+                    }
+
+                    consideredConstructors.Add(constructor);
+                }
+                else
+                {
+                    foreach (var parameterTypes in GetUsableParameterTypeListsInOrder(typeOfFake))
+                    {
+                        var constructor = new ResolvedConstructor(parameterTypes, resolver, resolutionContext);
+                        if (constructor.WasSuccessfullyResolved)
+                        {
+                            var argumentsForConstructor = GetArgumentsForConstructor(constructor);
+                            var result = this.GenerateProxy(typeOfFake, proxyOptions, argumentsForConstructor);
+
+                            if (result.ProxyWasSuccessfullyGenerated)
+                            {
+                                this.parameterTypesCache.TryAdd(typeOfFake, parameterTypes);
+                                return CreationResult.SuccessfullyCreated(result.GeneratedProxy);
+                            }
+
+                            constructor.ReasonForFailure = result.ReasonForFailure!;
+                        }
+
+                        consideredConstructors.Add(constructor);
+                    }
+                }
+
+                return CreationResult.FailedToCreateFake(typeOfFake, consideredConstructors);
+            }
+
+            private ProxyGeneratorResult GenerateProxy(Type typeOfFake, IProxyOptions proxyOptions, IEnumerable<object?> argumentsForConstructor)
+            {
+                var fakeCallProcessorProvider = this.fakeCallProcessorProviderFactory(typeOfFake, proxyOptions);
+
+                return CastleDynamicProxyGenerator.GenerateClassProxy(
                     typeOfFake,
                     proxyOptions.AdditionalInterfacesToImplement,
                     argumentsForConstructor,
-                    proxyOptions.AdditionalAttributes,
+                    proxyOptions.Attributes,
                     fakeCallProcessorProvider);
+            }
         }
     }
 }

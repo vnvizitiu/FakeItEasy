@@ -1,6 +1,5 @@
 namespace FakeItEasy.Expressions.ArgumentConstraints
 {
-    using System;
     using System.Collections;
     using System.Collections.Generic;
     using System.Linq;
@@ -9,7 +8,7 @@ namespace FakeItEasy.Expressions.ArgumentConstraints
     internal class AggregateArgumentConstraint
         : IArgumentConstraint
     {
-        private IArgumentConstraint[] constraintsField;
+        private readonly IArgumentConstraint[] constraintsField;
 
         public AggregateArgumentConstraint(IEnumerable<IArgumentConstraint> constraints)
         {
@@ -41,11 +40,11 @@ namespace FakeItEasy.Expressions.ArgumentConstraints
             writer.Write("]");
         }
 
-        public bool IsValid(object argument)
+        public bool IsValid(object? argument)
         {
             var enumerable = argument as IEnumerable;
 
-            if (enumerable == null || enumerable.Cast<object>().Count() != this.constraintsField.Length)
+            if (enumerable is null || enumerable.Cast<object>().Count() != this.constraintsField.Length)
             {
                 return false;
             }

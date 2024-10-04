@@ -1,7 +1,10 @@
 namespace FakeItEasy.Specs
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
+    using System.Threading.Tasks;
     using FakeItEasy.Configuration;
+    using FakeItEasy.Creation;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xbehave;
@@ -16,17 +19,51 @@ namespace FakeItEasy.Specs
             int Baz();
 
             string Bas();
+
+            IFoo Bafoo();
+
+            IFoo Bafoo(out int i);
+
+            IFoo Wrap(IFoo wrappee);
+
+            Task BarAsync();
+        }
+
+        [SuppressMessage("Microsoft.Design", "CA1040:AvoidEmptyInterfaces", Justification = "It's just used for testing.")]
+        public interface IInterface
+        {
         }
 
         [Scenario]
-        public static void Callback(
+        [InlineData(typeof(IInterface))]
+        [InlineData(typeof(AbstractClass))]
+        [InlineData(typeof(ClassWithProtectedConstructor))]
+        [InlineData(typeof(ClassWithInternalConstructorVisibleToDynamicProxy))]
+        [InlineData(typeof(InternalClassVisibleToDynamicProxy))]
+        public static void ConfigureToString(Type typeOfFake, object fake, string? stringResult)
+        {
+            "Given a fake"
+                .x(() => fake = Sdk.Create.Fake(typeOfFake));
+
+            "And I configure the fake's ToString method"
+                .x(() => A.CallTo(() => fake.ToString()).Returns("I configured " + typeOfFake + ".ToString()"));
+
+            "When I call the method"
+                .x(() => stringResult = fake.ToString());
+
+            "Then it returns the configured value"
+                .x(() => stringResult.Should().Be("I configured " + typeOfFake + ".ToString()"));
+        }
+
+        [Scenario]
+        public static void CallbackOnVoid(
             IFoo fake,
             bool wasCalled)
         {
             "Given a fake"
                 .x(() => fake = A.Fake<IFoo>());
 
-            "And I configure a method to invoke an action"
+            "And I configure a method to invoke an action when a void method is called"
                 .x(() => A.CallTo(() => fake.Bar()).Invokes(x => wasCalled = true));
 
             "When I call the method"
@@ -34,6 +71,28 @@ namespace FakeItEasy.Specs
 
             "Then it invokes the action"
                 .x(() => wasCalled.Should().BeTrue());
+        }
+
+        [Scenario]
+        public static void CallbackOnStringReturningMethod(
+            IFoo fake,
+            bool wasCalled,
+            string result)
+        {
+            "Given a fake"
+                .x(() => fake = A.Fake<IFoo>());
+
+            "And I configure a method to invoke an action when a string-returning method is called"
+                .x(() => A.CallTo(() => fake.Bas()).Invokes(x => wasCalled = true));
+
+            "When I call the method"
+                .x(() => result = fake.Bas());
+
+            "Then it invokes the action"
+                .x(() => wasCalled.Should().BeTrue());
+
+            "And a default value is returned"
+                .x(() => result.Should().BeEmpty());
         }
 
         [Scenario]
@@ -199,7 +258,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws an argument exception"
                .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                   .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                   .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+BaseClass' of type FakeItEasy.Specs.ConfigurationSpecs+BaseClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -211,11 +270,11 @@ namespace FakeItEasy.Specs
                 .x(() => notAFake = new BaseClass());
 
             "When I start to configure a non-virtual void method on the object"
-                .x(() => exception = Record.Exception(() => A.CallTo(() => notAFake.DoSomethingNonVirtual())));
+                .x(() => exception = Record.Exception(() => A.CallTo(() => notAFake.DoSomethingNonVirtual(1))));
 
             "Then it throws an argument exception"
                .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                   .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                   .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+BaseClass' of type FakeItEasy.Specs.ConfigurationSpecs+BaseClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -227,11 +286,11 @@ namespace FakeItEasy.Specs
                 .x(() => fake = A.Fake<BaseClass>());
 
             "When I start to configure a non-virtual void method on the fake"
-                .x(() => exception = Record.Exception(() => A.CallTo(() => fake.DoSomethingNonVirtual())));
+                .x(() => exception = Record.Exception(() => A.CallTo(() => fake.DoSomethingNonVirtual(2))));
 
             "Then it throws a fake configuration exception"
                 .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
-                    .And.Message.Should().Contain("Non virtual methods can not be intercepted."));
+                    .And.Message.Should().ContainModuloLineEndings("The current proxy generator can not intercept the method FakeItEasy.Specs.ConfigurationSpecs+BaseClass.DoSomethingNonVirtual(System.Int32 anInt) for the following reason:\r\n    - Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
         [Scenario]
@@ -247,7 +306,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws an argument exception"
                .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                   .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                   .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+DerivedClass' of type FakeItEasy.Specs.ConfigurationSpecs+DerivedClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -263,7 +322,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws a fake configuration exception"
                .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
-                   .And.Message.Should().Contain("Sealed methods can not be intercepted."));
+                   .And.Message.Should().Contain("Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
         [Scenario]
@@ -277,9 +336,9 @@ namespace FakeItEasy.Specs
             "When I start to configure a non-virtual non-void method on the object"
                 .x(() => exception = Record.Exception(() => A.CallTo(() => notAFake.ReturnSomethingNonVirtual())));
 
-             "Then it throws an argument exception"
+            "Then it throws an argument exception"
                 .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                    .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                    .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+BaseClass' of type FakeItEasy.Specs.ConfigurationSpecs+BaseClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -295,7 +354,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws a fake configuration exception"
                 .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
-                    .And.Message.Should().Contain("Non virtual methods can not be intercepted."));
+                    .And.Message.Should().Contain("Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
         [Scenario]
@@ -309,9 +368,9 @@ namespace FakeItEasy.Specs
             "When I start to configure a sealed non-void method on the object"
                 .x(() => exception = Record.Exception(() => A.CallTo(() => notAFake.ReturnSomething())));
 
-             "Then it throws an argument exception"
+            "Then it throws an argument exception"
                 .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                    .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                    .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+DerivedClass' of type FakeItEasy.Specs.ConfigurationSpecs+DerivedClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -325,9 +384,9 @@ namespace FakeItEasy.Specs
             "When I start to configure a sealed non-void method on the fake"
                 .x(() => exception = Record.Exception(() => A.CallTo(() => fake.ReturnSomething())));
 
-             "Then it throws a fake configuration exception"
+            "Then it throws a fake configuration exception"
                 .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
-                    .And.Message.Should().Contain("Sealed methods can not be intercepted."));
+                    .And.Message.Should().Contain("Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
         [Scenario]
@@ -343,7 +402,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws an argument exception"
                .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                   .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                   .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+BaseClass' of type FakeItEasy.Specs.ConfigurationSpecs+BaseClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -359,7 +418,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws a fake configuration exception"
                 .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
-                    .And.Message.Should().Contain("Non virtual methods can not be intercepted."));
+                    .And.Message.Should().Contain("Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
         [Scenario]
@@ -375,7 +434,7 @@ namespace FakeItEasy.Specs
 
             "Then it throws an argument exception"
                .x(() => exception.Should().BeAnExceptionOfType<ArgumentException>()
-                   .And.Message.Should().Contain("The specified object is not recognized as a fake object."));
+                   .And.Message.Should().Contain("Object 'FakeItEasy.Specs.ConfigurationSpecs+DerivedClass' of type FakeItEasy.Specs.ConfigurationSpecs+DerivedClass is not recognized as a fake object."));
         }
 
         [Scenario]
@@ -391,11 +450,11 @@ namespace FakeItEasy.Specs
 
             "Then it throws a fake configuration exception"
                .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
-                   .And.Message.Should().Contain("Sealed methods can not be intercepted."));
+                   .And.Message.Should().Contain("Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted."));
         }
 
         [Scenario]
-        public static void DoesNothingAfterStrictVoid(
+        public static void DoesNothingAfterStrictVoidDoesNotThrow(
             IFoo fake,
             Exception exception)
         {
@@ -413,7 +472,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public static void DoesNothingAfterStrictValueType(
+        public static void DoesNothingAfterStrictValueTypeKeepsDefaultReturnValue(
             IFoo fake,
             int result)
         {
@@ -426,12 +485,12 @@ namespace FakeItEasy.Specs
             "When I call a value type method"
                 .x(() => result = fake.Baz());
 
-            "Then it returns a default instance of the value type"
-                .x(() => result.Should().Be(0));
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Baz()));
         }
 
         [Scenario]
-        public static void DoesNothingAfterStrictReferenceType(
+        public static void DoesNothingAfterStrictNonFakeableReferenceTypeKeepsDefaultReturnValue(
             IFoo fake,
             string result)
         {
@@ -441,11 +500,29 @@ namespace FakeItEasy.Specs
             "And I configure all methods to do nothing"
                 .x(() => A.CallTo(fake).DoesNothing());
 
-            "When I call a reference type method"
+            "When I call a non-fakeable reference type method"
                 .x(() => result = fake.Bas());
 
-            "Then it returns null"
-                .x(() => result.Should().BeNull());
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Bas()));
+        }
+
+        [Scenario]
+        public static void DoesNothingAfterStrictFakeableReferenceTypeKeepsDefaultReturnValue(
+            IFoo fake,
+            IFoo result)
+        {
+            "Given a strict fake"
+                .x(() => fake = A.Fake<IFoo>(options => options.Strict()));
+
+            "And I configure all methods to do nothing"
+                .x(() => A.CallTo(fake).DoesNothing());
+
+            "When I call a fakeable reference type method"
+                .x(() => result = fake.Bafoo());
+
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Bafoo()));
         }
 
         [Scenario]
@@ -534,7 +611,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public static void InvokesAfterStrictVoid(
+        public static void InvokesAfterStrictVoidDoesNotThrow(
             IFoo fake,
             Exception exception)
         {
@@ -552,7 +629,7 @@ namespace FakeItEasy.Specs
         }
 
         [Scenario]
-        public static void InvokesAfterStrictValueType(
+        public static void InvokesAfterStrictValueTypeKeepsDefaultReturnValue(
             IFoo fake,
             int result)
         {
@@ -565,12 +642,12 @@ namespace FakeItEasy.Specs
             "When I call the method"
                 .x(() => result = fake.Baz());
 
-            "Then it returns a default instance of the value type"
-                .x(() => result.Should().Be(0));
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Baz()));
         }
 
         [Scenario]
-        public static void InvokesAfterStrictReferenceType(
+        public static void InvokesAfterStrictNonFakeableReferenceTypeKeepsDefaultReturnValue(
             IFoo fake,
             string result)
         {
@@ -580,11 +657,48 @@ namespace FakeItEasy.Specs
             "And I configure all methods to invoke an action"
                 .x(() => A.CallTo(fake).Invokes(() => { }));
 
-            "When I call a reference type method"
+            "When I call a non-fakeable reference type method"
                 .x(() => result = fake.Bas());
 
-            "Then it returns null"
-                .x(() => result.Should().BeNull());
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Bas()));
+        }
+
+        [Scenario]
+        public static void InvokesAfterStrictFakeableableReferenceTypeKeepsDefaultReturnValue(
+            IFoo fake,
+            IFoo result)
+        {
+            "Given a strict fake"
+                .x(() => fake = A.Fake<IFoo>(options => options.Strict()));
+
+            "And I configure all methods to invoke an action"
+                .x(() => A.CallTo(fake).Invokes(() => { }));
+
+            "When I call a fakeable reference type method"
+                .x(() => result = fake.Bafoo());
+
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Bafoo()));
+        }
+
+        [Scenario]
+        public static void AssignsOutAndRefParametersForAllMethodsKeepsDefaultReturnValue(
+            IFoo fake,
+            IFoo result,
+            int i)
+        {
+            "Given a fake"
+                .x(() => fake = A.Fake<IFoo>());
+
+            "And I configure all methods to assign out and ref parameters"
+                .x(() => A.CallTo(fake).AssignsOutAndRefParameters(0));
+
+            "When I call a reference type method"
+                .x(() => result = fake.Bafoo(out i));
+
+            "Then it returns the same value as an unconfigured fake"
+                .x(() => result.Should().Be(A.Fake<IFoo>().Bafoo(out i)));
         }
 
         [Scenario]
@@ -623,20 +737,86 @@ namespace FakeItEasy.Specs
                 .x(() => exception.Should().BeAnExceptionOfType<ExpectationException>());
         }
 
+        [Scenario]
+        public static void NestedCallThatIncludesArrayConstruction(
+            IFoo fake,
+            Exception exception)
+        {
+            "Given a fake"
+                .x(() => fake = A.Fake<IFoo>());
+
+            "When I specify a call and create a non-object array in the call configuration"
+                .x(() => exception = Record.Exception(() => A.CallTo(() => fake.Wrap(Foo.BuildFromArray(new[] { 1, 2, 3 })))));
+
+            "Then it doesn't throw"
+                .x(() => exception.Should().BeNull());
+        }
+
+        [Scenario]
+        public static void CallToExplicitInterfaceImplementation(
+            FooWithExplicitImplementationOfBaz fake,
+            Exception exception)
+        {
+            "Given a fake of a class that explicitly implements an interface method"
+                .x(() => fake = A.Fake<FooWithExplicitImplementationOfBaz>());
+
+            "When I start to configure the explicitly implemented interface method"
+                .x(() => exception = Record.Exception(() => A.CallTo(() => ((IFoo)fake).Baz())));
+
+            "Then it throws a fake configuration exception"
+                .x(() => exception.Should().BeAnExceptionOfType<FakeConfigurationException>()
+                    .And.Message.Should().Contain("The base type implements this interface method explicitly. In order to be able to intercept this method, the fake must specify that it implements this interface in the fake creation options."));
+        }
+
+        [Scenario]
+        public static void DoesNothingOnTaskReturningMethod(IFoo fake, Task result)
+        {
+            "Given a fake of a class with a task-returning method"
+                .x(() => fake = A.Fake<IFoo>());
+
+            "And the method is configured to return an failed task"
+                .x(() => A.CallTo(() => fake.BarAsync()).Returns(Task.FromException(new Exception("oops"))));
+
+            "When the method is configured to do nothing"
+                .x(() => A.CallTo(() => fake.BarAsync()).DoesNothing());
+
+            "And the method is called"
+                .x(() => result = fake.BarAsync());
+
+            "Then it returns a successfully completed task"
+                .x(() => result.Status.Should().Be(TaskStatus.RanToCompletion));
+        }
+
+        [Scenario]
+        public static void CallingAnUnconfiguredVoidMethodWhenVoidFakeOptionsBuilderExists(IFoo fake, Exception? exception)
+        {
+            "Given a fake options builder that can build options for fake of type void"
+                .See<VoidOptionsBuilder>();
+
+            "And a fake of a type with a void method"
+                .x(() => fake = A.Fake<IFoo>());
+
+            "And the void method is called on the fake"
+                .x(() => exception = Record.Exception(() => fake.Bar()));
+
+            "Then it does not throw"
+                .x(() => exception.Should().BeNull());
+        }
+
         public class BaseClass
         {
             public bool WasCalled { get; private set; }
 
-            public string SomeNonVirtualProperty { get; set; }
+            public string SomeNonVirtualProperty { get; set; } = string.Empty;
 
-            public virtual string SomeProperty { get; set; }
+            public virtual string SomeProperty { get; set; } = string.Empty;
 
             public virtual void DoSomething()
             {
                 this.WasCalled = true;
             }
 
-            public void DoSomethingNonVirtual()
+            public void DoSomethingNonVirtual(int anInt)
             {
             }
 
@@ -654,7 +834,7 @@ namespace FakeItEasy.Specs
 
         public class DerivedClass : BaseClass
         {
-            public sealed override string SomeProperty { get; set; }
+            public sealed override string SomeProperty { get; set; } = string.Empty;
 
             public sealed override void DoSomething()
             {
@@ -663,6 +843,89 @@ namespace FakeItEasy.Specs
             public sealed override int ReturnSomething()
             {
                 return 10;
+            }
+        }
+
+        public class Foo : IFoo
+        {
+            [SuppressMessage("Microsoft.Usage", "CA1801:ReviewUnusedParameters", MessageId = "integers", Justification = "Required for testing.")]
+            public static IFoo BuildFromArray(int[] integers)
+            {
+                return new Foo();
+            }
+
+            public void Bar()
+            {
+                throw new NotSupportedException();
+            }
+
+            public int Baz()
+            {
+                throw new NotSupportedException();
+            }
+
+            public string Bas()
+            {
+                throw new NotSupportedException();
+            }
+
+            public IFoo Bafoo()
+            {
+                throw new NotSupportedException();
+            }
+
+            public IFoo Bafoo(out int i)
+            {
+                throw new NotSupportedException();
+            }
+
+            public IFoo Wrap(IFoo wrappee)
+            {
+                throw new NotImplementedException();
+            }
+
+            public Task BarAsync()
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        [SuppressMessage("Microsoft.Design", "CA1033:InterfaceMethodsShouldBeCallableByChildTypes", Justification = "Required for testing.")]
+        public class FooWithExplicitImplementationOfBaz : IFoo
+        {
+            int IFoo.Baz() => 123;
+
+            public IFoo Bafoo() => throw new NotImplementedException();
+
+            public IFoo Bafoo(out int i) => throw new NotImplementedException();
+
+            public void Bar() => throw new NotImplementedException();
+
+            public string Bas() => throw new NotImplementedException();
+
+            public IFoo Wrap(IFoo wrappee) => throw new NotImplementedException();
+
+            public Task BarAsync() => throw new NotImplementedException();
+        }
+
+        public class FooFactory : DummyFactory<IFoo>
+        {
+            public static IFoo Instance { get; } = new Foo();
+
+            protected override IFoo Create()
+            {
+                return Instance;
+            }
+        }
+
+        public class VoidOptionsBuilder : IFakeOptionsBuilder
+        {
+            public Priority Priority => Priority.Default;
+
+            public bool CanBuildOptionsForFakeOfType(Type type) => type == typeof(void);
+
+            public void BuildOptions(Type typeOfFake, IFakeOptions options)
+            {
             }
         }
     }

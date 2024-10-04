@@ -4,9 +4,11 @@ namespace FakeItEasy.Creation
 
     internal class ResolvedArgument
     {
-        public Type ArgumentType { get; set; }
+        public ResolvedArgument(Type argumentType) => this.ArgumentType = argumentType;
 
-        public object ResolvedValue { get; set; }
+        public Type ArgumentType { get; }
+
+        public object? ResolvedValue { get; set; }
 
         public bool WasResolved { get; set; }
     }

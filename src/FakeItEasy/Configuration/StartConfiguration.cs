@@ -24,34 +24,66 @@ namespace FakeItEasy.Configuration
 
         public IReturnValueArgumentValidationConfiguration<TMember> CallsTo<TMember>(Expression<Func<TFake, TMember>> callSpecification)
         {
-            Guard.AgainstNull(callSpecification, nameof(callSpecification));
+            Guard.AgainstNull(callSpecification);
 
-            this.AssertThatMemberCanBeIntercepted(callSpecification);
+            var parsedCallExpression = this.expressionParser.Parse(callSpecification, this.manager.Object!);
+            this.GuardAgainstWrongFake(parsedCallExpression.CallTarget);
+            this.AssertThatMemberCanBeIntercepted(parsedCallExpression);
 
-            var rule = this.callRuleFactory(this.expressionParser.Parse(callSpecification));
+            var rule = this.callRuleFactory(parsedCallExpression);
             return this.configurationFactory.CreateConfiguration<TMember>(this.manager, rule);
         }
 
         public IVoidArgumentValidationConfiguration CallsTo(Expression<Action<TFake>> callSpecification)
         {
-            Guard.AgainstNull(callSpecification, nameof(callSpecification));
+            Guard.AgainstNull(callSpecification);
 
-            this.AssertThatMemberCanBeIntercepted(callSpecification);
+            var parsedCallExpression = this.expressionParser.Parse(callSpecification, this.manager.Object!);
+            this.GuardAgainstWrongFake(parsedCallExpression.CallTarget);
+            this.AssertThatMemberCanBeIntercepted(parsedCallExpression);
 
-            var rule = this.callRuleFactory(this.expressionParser.Parse(callSpecification));
+            var rule = this.callRuleFactory(parsedCallExpression);
             return this.configurationFactory.CreateConfiguration(this.manager, rule);
+        }
+
+        public IPropertySetterAnyValueConfiguration<TValue> CallsToSet<TValue>(Expression<Func<TFake, TValue>> propertySpecification)
+        {
+            Guard.AgainstNull(propertySpecification);
+
+            var parsedCallExpression = this.expressionParser.Parse(propertySpecification, this.manager.Object!);
+            this.GuardAgainstWrongFake(parsedCallExpression.CallTarget);
+            this.AssertThatMemberCanBeIntercepted(parsedCallExpression);
+
+            var parsedSetterCallExpression = PropertyExpressionHelper.BuildSetterFromGetter<TValue>(parsedCallExpression);
+
+            return new PropertySetterConfiguration<TValue>(
+                parsedSetterCallExpression,
+                this.CreateVoidArgumentValidationConfiguration);
         }
 
         public IAnyCallConfigurationWithNoReturnTypeSpecified AnyCall()
         {
-            var rule = new AnyCallCallRule();
+            var rule = new AnyCallCallRule(this.manager);
             return this.configurationFactory.CreateAnyCallConfiguration(this.manager, rule);
         }
 
-        private void AssertThatMemberCanBeIntercepted(LambdaExpression callSpecification)
+        private void AssertThatMemberCanBeIntercepted(ParsedCallExpression parsedCall)
         {
-            var parsedCall = this.expressionParser.Parse(callSpecification);
             this.interceptionAsserter.AssertThatMethodCanBeInterceptedOnInstance(parsedCall.CalledMethod, this.manager.Object);
+        }
+
+        private void GuardAgainstWrongFake(object? callTarget)
+        {
+            if (callTarget != this.manager.Object)
+            {
+                throw new ArgumentException(ExceptionMessages.CallTargetIsNotFakeBeingConfigured);
+            }
+        }
+
+        private IVoidArgumentValidationConfiguration CreateVoidArgumentValidationConfiguration(ParsedCallExpression parsedCallExpression)
+        {
+            var rule = this.callRuleFactory.Invoke(parsedCallExpression);
+            return this.configurationFactory.CreateConfiguration(this.manager, rule);
         }
     }
 }

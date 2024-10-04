@@ -6,7 +6,7 @@ namespace FakeItEasy.Tests
     using FluentAssertions;
     using Xunit;
 
-    public class ExceptionThrowerConfigurationExtensionsTests : ConfigurableServiceLocatorTestBase
+    public class ExceptionThrowerConfigurationExtensionsTests
     {
         public interface IInterface
         {
@@ -56,7 +56,7 @@ namespace FakeItEasy.Tests
         {
             // Arrange
             const string Argument = "Argument";
-            string collectedArgument = null;
+            string? collectedArgument = null;
             var exceptionToThrow = new InvalidOperationException();
 
             var fake = A.Fake<IInterface>();
@@ -139,8 +139,8 @@ namespace FakeItEasy.Tests
             // Arrange
             const string FirstArgument = "First Argument";
             const string SecondArgument = "Second Argument";
-            string firstCollectedArgument = null;
-            string secondCollectedArgument = null;
+            string? firstCollectedArgument = null;
+            string? secondCollectedArgument = null;
             var exceptionToThrow = new InvalidOperationException();
 
             var fake = A.Fake<IInterface>();
@@ -245,9 +245,9 @@ namespace FakeItEasy.Tests
             const string FirstArgument = "First Argument";
             const string SecondArgument = "Second Argument";
             const string ThirdArgument = "Third Argument";
-            string firstCollectedArgument = null;
-            string secondCollectedArgument = null;
-            string thirdCollectedArgument = null;
+            string? firstCollectedArgument = null;
+            string? secondCollectedArgument = null;
+            string? thirdCollectedArgument = null;
             var exceptionToThrow = new InvalidOperationException();
 
             var fake = A.Fake<IInterface>();
@@ -375,10 +375,10 @@ namespace FakeItEasy.Tests
             const string SecondArgument = "Second Argument";
             const string ThirdArgument = "Third Argument";
             const string FourthArgument = "Fourth Argument";
-            string firstCollectedArgument = null;
-            string secondCollectedArgument = null;
-            string thirdCollectedArgument = null;
-            string fourthCollectedArgument = null;
+            string? firstCollectedArgument = null;
+            string? secondCollectedArgument = null;
+            string? thirdCollectedArgument = null;
+            string? fourthCollectedArgument = null;
             var exceptionToThrow = new InvalidOperationException();
 
             var fake = A.Fake<IInterface>();
@@ -484,23 +484,23 @@ namespace FakeItEasy.Tests
         {
             // Arrange
             var ex = A.Dummy<Exception>();
-            var config = A.Fake<IExceptionThrowerConfiguration>();
+            var config = A.Fake<IExceptionThrowerConfiguration<IVoidConfiguration>>();
 
             // Act
             config.Throws(ex);
 
             // Assert
-            A.CallTo(() => config.Throws(A<Func<IFakeObjectCall, Exception>>.That.Returns(ex))).MustHaveHappened();
+            A.CallTo(() => config.Throws(A<Func<IFakeObjectCall, Exception>>.That.Returns(A.Dummy<IFakeObjectCall>(), ex))).MustHaveHappened();
         }
 
         [Fact]
         public void Should_configure_fake_to_throw_the_specified_exception_type()
         {
             // Arrange
-            var config = A.Fake<IExceptionThrowerConfiguration>();
+            var config = A.Fake<IExceptionThrowerConfiguration<IVoidConfiguration>>();
 
             // Act
-            config.Throws<InvalidOperationException>();
+            config.Throws(new InvalidOperationException());
 
             // Assert
             A.CallTo(() => config.Throws(FuncThatReturnsExceptionOfType<InvalidOperationException>())).MustHaveHappened();
@@ -512,19 +512,19 @@ namespace FakeItEasy.Tests
             // Arrange
             var exception = A.Dummy<Exception>();
             var factory = new Func<Exception>(() => exception);
-            var config = A.Fake<IExceptionThrowerConfiguration>();
+            var config = A.Fake<IExceptionThrowerConfiguration<IVoidConfiguration>>();
 
             // Act
             config.Throws(factory);
 
             // Assert
-            A.CallTo(() => config.Throws(A<Func<IFakeObjectCall, Exception>>.That.Returns(exception))).MustHaveHappened();
+            A.CallTo(() => config.Throws(A<Func<IFakeObjectCall, Exception>>.That.Returns(A.Dummy<IFakeObjectCall>(), exception))).MustHaveHappened();
         }
 
         private static Func<IFakeObjectCall, Exception> FuncThatReturnsExceptionOfType<T>()
         {
             return A<Func<IFakeObjectCall, Exception>>.That.NullCheckedMatches(
-                x => x.Invoke(null) is T,
+                x => x.Invoke(A.Dummy<IFakeObjectCall>()) is T,
                 x => x.Write("function that returns exception of type ").WriteArgumentValue(typeof(T)));
         }
 
@@ -532,7 +532,7 @@ namespace FakeItEasy.Tests
         {
             var expectedMessage = "The faked method has the signature " + fakeSignature + ", but throws was used with " + throwsSignature + ".";
 
-            act.ShouldThrow<FakeConfigurationException>().WithMessage(expectedMessage);
+            act.Should().Throw<FakeConfigurationException>().WithMessage(expectedMessage);
         }
     }
 }

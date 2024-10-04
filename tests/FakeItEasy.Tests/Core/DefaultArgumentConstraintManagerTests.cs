@@ -11,7 +11,7 @@ namespace FakeItEasy.Tests.Core
 
         public DefaultArgumentConstraintManagerTests()
         {
-            this.createdConstraint = null;
+            this.createdConstraint = null!; // it will be assigned a non-null value by the time it's accessed
             this.constraintManager = new DefaultArgumentConstraintManager<string>(x => this.createdConstraint = x);
         }
 
@@ -33,7 +33,7 @@ namespace FakeItEasy.Tests.Core
         public void Should_create_constraint_that_passes_argument_to_delegate()
         {
             // Arrange
-            string argumentPassedToDelegate = null;
+            string? argumentPassedToDelegate = null;
 
             // Act
             this.constraintManager.Matches(
@@ -53,7 +53,7 @@ namespace FakeItEasy.Tests.Core
         public void Should_create_constraint_that_passes_writer_to_writer_delegate()
         {
             // Arrange
-            IOutputWriter passedInWriter = null;
+            IOutputWriter? passedInWriter = null;
 
             var writerFromOutside = A.Dummy<IOutputWriter>();
 
@@ -83,7 +83,7 @@ namespace FakeItEasy.Tests.Core
         public void Should_create_constraint_that_passes_argument_to_delegate_when_prefixing_with_not()
         {
             // Arrange
-            string argumentPassedToDelegate = null;
+            string? argumentPassedToDelegate = null;
 
             // Act
             this.constraintManager.Not.Matches(
@@ -103,7 +103,7 @@ namespace FakeItEasy.Tests.Core
         public void Should_create_constraint_that_passes_writer_to_writer_delegate_when_prefixing_with_not()
         {
             // Arrange
-            IOutputWriter passedInWriter = null;
+            IOutputWriter? passedInWriter = null;
 
             var writerFromOutside = A.Dummy<IOutputWriter>();
 
@@ -133,7 +133,7 @@ namespace FakeItEasy.Tests.Core
         public void Should_create_constraint_that_writes_beginning_and_end_of_argument_constraint()
         {
             // Arrange
-            var writer = new StringBuilderOutputWriter();
+            var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
 
             // Act
             this.constraintManager.Matches(x => true, x => x.Write("foo"));

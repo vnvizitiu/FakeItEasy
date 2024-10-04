@@ -7,40 +7,20 @@ namespace FakeItEasy.Core
     /// Implementation of <see cref="IFakeCallProcessorProvider"/>, which returns a <see cref="FakeManager"/> as "call processor" lazily (on
     /// the first call of <see cref="Fetch"/> or <see cref="EnsureInitialized"/>).
     /// </summary>
-    /// <remarks>
-    /// Note that we just need to serialize the <see cref="FakeManager"/> + the lock (an "empty", *new* object will be deserialized)
-    /// because <see cref="IFakeCallProcessorProvider"/> doesn't require serializability before the first call of <see cref="Fetch"/> or
-    /// <see cref="EnsureInitialized"/> (see remarks section of <see cref="IFakeCallProcessorProvider"/>).
-    /// </remarks>
-#if FEATURE_BINARY_SERIALIZATION
-    [Serializable]
-#endif
     internal class FakeManagerProvider : IFakeCallProcessorProvider
     {
-#if FEATURE_BINARY_SERIALIZATION
-        [NonSerialized]
-#endif
         private readonly FakeManager.Factory fakeManagerFactory;
 
-#if FEATURE_BINARY_SERIALIZATION
-        [NonSerialized]
-#endif
         private readonly IFakeManagerAccessor fakeManagerAccessor;
 
-#if FEATURE_BINARY_SERIALIZATION
-        [NonSerialized]
-#endif
         private readonly Type typeOfFake;
 
-#if FEATURE_BINARY_SERIALIZATION
-        [NonSerialized]
-#endif
         private readonly IProxyOptions proxyOptions;
 
         // We want to lock accesses to initializedFakeManager to guarantee thread-safety (see IFakeCallProcessorProvider documentation):
         private readonly object initializedFakeManagerLock = new object();
 
-        private FakeManager initializedFakeManager;
+        private FakeManager? initializedFakeManager;
 
         public FakeManagerProvider(
                 FakeManager.Factory fakeManagerFactory,
@@ -48,10 +28,10 @@ namespace FakeItEasy.Core
                 Type typeOfFake,
                 IProxyOptions proxyOptions)
         {
-            Guard.AgainstNull(fakeManagerFactory, nameof(fakeManagerFactory));
-            Guard.AgainstNull(fakeManagerAccessor, nameof(fakeManagerAccessor));
-            Guard.AgainstNull(typeOfFake, nameof(typeOfFake));
-            Guard.AgainstNull(proxyOptions, nameof(proxyOptions));
+            Guard.AgainstNull(fakeManagerFactory);
+            Guard.AgainstNull(fakeManagerAccessor);
+            Guard.AgainstNull(typeOfFake);
+            Guard.AgainstNull(proxyOptions);
 
             this.fakeManagerFactory = fakeManagerFactory;
             this.fakeManagerAccessor = fakeManagerAccessor;
@@ -61,29 +41,31 @@ namespace FakeItEasy.Core
 
         public IFakeCallProcessor Fetch(object proxy)
         {
-            Guard.AgainstNull(proxy, nameof(proxy));
+            Guard.AgainstNull(proxy);
 
             lock (this.initializedFakeManagerLock)
             {
                 this.EnsureInitialized(proxy);
 
-                return this.initializedFakeManager;
+                return this.initializedFakeManager!;
             }
         }
 
         public void EnsureInitialized(object proxy)
         {
-            Guard.AgainstNull(proxy, nameof(proxy));
+            Guard.AgainstNull(proxy);
 
             lock (this.initializedFakeManagerLock)
             {
-                if (this.initializedFakeManager == null)
+                if (this.initializedFakeManager is null)
                 {
-                    this.initializedFakeManager = this.fakeManagerFactory(this.typeOfFake, proxy);
+                    this.initializedFakeManager = this.fakeManagerFactory(this.typeOfFake, proxy, this.proxyOptions.Name);
 
-                    this.fakeManagerAccessor.TagProxy(proxy, this.initializedFakeManager);
+                    this.fakeManagerAccessor.SetFakeManager(proxy, this.initializedFakeManager);
 
                     this.ApplyInitialConfiguration(proxy);
+
+                    this.initializedFakeManager.CaptureInitialState();
                 }
             }
         }

@@ -17,7 +17,7 @@ A `get` property on a Fake can be configured similarly:
 A.CallTo(() => fakeShop.Address).Returns("123 Fake Street");
 ```
 
-##Return Values Calculated at Call Time
+## Return Values Calculated at Call Time
 
 Sometimes a desired return value won't be known at the time the call
 is configured. `ReturnsNextFromSequence` and `ReturnsLazily` can help
@@ -30,7 +30,7 @@ A.CallTo(() => fakeShop.SellSweetFromShelf())
 
 will first return `lollipop`, then `smarties`, then `wineGums`. The
 next call will not take an item from the sequence, but will rely on
-other configured (or default) behaviour.
+other configured (or default) behavior.
 
 On to the very powerful `ReturnsLazily`:
 
@@ -42,7 +42,7 @@ A.CallTo(() => fakeShop.NumberOfSweetsSoldToday()).ReturnsLazily(() => ++sweetsS
 
 If a return value depends on input to the method, those values can be
 incorporated in the calculation. Convenient overloads exist for
-methods of up to four parameters.
+methods of up to 8 parameters.
 
 ```csharp
 A.CallTo(() => fakeShop.NumberOfSweetsSoldOn(A<DateTime>.Ignored)) 
@@ -59,7 +59,7 @@ at compile time, but any type mismatch will trigger a helpful error
 message.
 
 If more advanced decision-making is required, or the method has more
-than 4 parameters, the convenience methods won't work. Use the variant
+than 8 parameters, the convenience methods won't work. Use the variant
 that takes an `IFakeObjectCall` instead:
 
 ```charp

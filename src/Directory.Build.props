@@ -1,0 +1,35 @@
+<Project>
+
+  <Import Project="../Directory.Build.props" />
+
+  <PropertyGroup Label="Common package properties">
+    <Company>Patrik Hägne</Company>
+    <Copyright>Copyright (c) FakeItEasy contributors. (fakeiteasyfx@gmail.com)</Copyright>
+    <PackageProjectUrl>https://fakeiteasy.github.io/</PackageProjectUrl>
+    <PackageIcon>images/FakeItEasy.png</PackageIcon>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageReleaseNotes>https://github.com/FakeItEasy/FakeItEasy/releases</PackageReleaseNotes>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <RepositoryUrl>https://github.com/FakeItEasy/FakeItEasy.git</RepositoryUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <DebugType>embedded</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MinVer" Version="2.3.1" PrivateAssets="All" />
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="1.0.0" PrivateAssets="All"/>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)FakeItEasy.png" Pack="true" PackagePath="images/FakeItEasy.png" />
+    <None Include="$(MSBuildThisFileDirectory)../README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+</Project>

@@ -1,7 +1,6 @@
 namespace FakeItEasy.Tests.Core
 {
     using System;
-    using System.Globalization;
     using System.Linq;
     using System.Reflection;
     using FakeItEasy.Tests.TestHelpers;
@@ -13,7 +12,7 @@ namespace FakeItEasy.Tests.Core
         [Fact]
         public void Create_with_type_parameter_should_return_object_from_Create()
         {
-            var factory = new TestableFakeFactory() as IDummyFactory;
+            var factory = new TestableFakeFactory();
             var created = factory.Create(typeof(SomeType));
 
             created.Should().BeOfType<SomeType>();
@@ -23,12 +22,11 @@ namespace FakeItEasy.Tests.Core
         public void Create_should_guard_against_bad_type_argument()
         {
             string expectedMessage = string.Format(
-                CultureInfo.CurrentCulture,
-                "The {0} can only create dummies of type '{1}'.*",
+                "The {0} can only create dummies of type {1}.*",
                 typeof(TestableFakeFactory),
                 typeof(SomeType));
 
-            var factory = new TestableFakeFactory() as IDummyFactory;
+            var factory = new TestableFakeFactory();
 
             var exception = Record.Exception(() => factory.Create(typeof(DummyFactoryTests)));
 
@@ -42,7 +40,7 @@ namespace FakeItEasy.Tests.Core
         public void Built_in_factories_should_have_lower_than_default_priority()
         {
             // Arrange
-            var allDummyFactories = typeof(A).GetTypeInformation().Assembly.GetTypes()
+            var allDummyFactories = typeof(A).Assembly.GetTypes()
 
                 .Where(t => t.CanBeInstantiatedAs(typeof(IDummyFactory)))
                 .Select(Activator.CreateInstance)

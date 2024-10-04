@@ -1,7 +1,5 @@
 namespace FakeItEasy
 {
-    using System;
-
     using FakeItEasy.Core;
     using FakeItEasy.Creation;
 
@@ -17,34 +15,61 @@ namespace FakeItEasy
         /// <typeparam name="T">The type of fake object.</typeparam>
         /// <param name="options">Options used to create the fake object.</param>
         /// <returns>An options object.</returns>
-        public static IFakeOptions<T> Strict<T>(this IFakeOptions<T> options)
+        public static IFakeOptions<T> Strict<T>(this IFakeOptions<T> options) where T : class
         {
-            Guard.AgainstNull(options, nameof(options));
+            return options.Strict(StrictFakeOptions.None);
+        }
 
-            Action<IFakeObjectCall> thrower = call =>
-                {
-                    throw new ExpectationException("Call to non configured method \"{0}\" of strict fake.".FormatInvariant(call.Method.Name));
-                };
+        /// <summary>
+        /// Makes the fake strict. This means that any call to the fake
+        /// that has not been explicitly configured will throw an exception,
+        /// except calls to the <see cref="object"/> methods specified
+        /// in <paramref name="strictOptions"/>.
+        /// </summary>
+        /// <typeparam name="T">The type of fake object.</typeparam>
+        /// <param name="options">Options used to create the fake object.</param>
+        /// <param name="strictOptions">Strict fake options.</param>
+        /// <returns>An options object.</returns>
+        public static IFakeOptions<T> Strict<T>(this IFakeOptions<T> options, StrictFakeOptions strictOptions) where T : class
+        {
+            Guard.AgainstNull(options);
 
-            return options.ConfigureFake(fake => A.CallTo(fake).Invokes(thrower));
+            return options.ConfigureFake(fake =>
+            {
+                var manager = Fake.GetFakeManager(fake);
+                manager.AddRuleFirst(new StrictFakeRule(strictOptions));
+            });
         }
 
         /// <summary>
         /// Makes the fake strict. This means that any call to the fake
         /// that has not been explicitly configured will throw an exception.
         /// </summary>
-        /// <param name="optionsBuilder">Action that builds options used to create the fake object.</param>
-        /// <returns>A configuration object.</returns>
-        public static IFakeOptions Strict(this IFakeOptions optionsBuilder)
+        /// <param name="options">Options used to create the fake object.</param>
+        /// <returns>An options object.</returns>
+        public static IFakeOptions Strict(this IFakeOptions options)
         {
-            Guard.AgainstNull(optionsBuilder, nameof(optionsBuilder));
+            return options.Strict(StrictFakeOptions.None);
+        }
 
-            Action<IFakeObjectCall> thrower = call =>
-                {
-                    throw new ExpectationException("Call to non configured method \"{0}\" of strict fake.".FormatInvariant(call.Method.Name));
-                };
+        /// <summary>
+        /// Makes the fake strict. This means that any call to the fake
+        /// that has not been explicitly configured will throw an exception,
+        /// except calls to the <see cref="object"/> methods specified
+        /// in <paramref name="strictOptions"/>.
+        /// </summary>
+        /// <param name="options">Options used to create the fake object.</param>
+        /// <param name="strictOptions">Strict fake options.</param>
+        /// <returns>An options object.</returns>
+        public static IFakeOptions Strict(this IFakeOptions options, StrictFakeOptions strictOptions)
+        {
+            Guard.AgainstNull(options);
 
-            return optionsBuilder.ConfigureFake(fake => A.CallTo(fake).Invokes(thrower));
+            return options.ConfigureFake(fake =>
+            {
+                var manager = Fake.GetFakeManager(fake);
+                manager.AddRuleFirst(new StrictFakeRule(strictOptions));
+            });
         }
 
         /// <summary>
@@ -53,9 +78,9 @@ namespace FakeItEasy
         /// <typeparam name="T">The type of fake object.</typeparam>
         /// <param name="options">Options used to create the fake object.</param>
         /// <returns>An options object.</returns>
-        public static IFakeOptions<T> CallsBaseMethods<T>(this IFakeOptions<T> options)
+        public static IFakeOptions<T> CallsBaseMethods<T>(this IFakeOptions<T> options) where T : class
         {
-            Guard.AgainstNull(options, nameof(options));
+            Guard.AgainstNull(options);
 
             return options.ConfigureFake(fake => A.CallTo(fake)
                                                   .Where(call => !call.Method.IsAbstract)
@@ -65,13 +90,13 @@ namespace FakeItEasy
         /// <summary>
         /// Makes the fake default to calling base methods, so long as they aren't abstract.
         /// </summary>
-        /// <param name="optionsBuilder">Action that builds options used to create the fake object.</param>
-        /// <returns>A configuration object.</returns>
-        public static IFakeOptions CallsBaseMethods(this IFakeOptions optionsBuilder)
+        /// <param name="options">Options used to create the fake object.</param>
+        /// <returns>An options object.</returns>
+        public static IFakeOptions CallsBaseMethods(this IFakeOptions options)
         {
-            Guard.AgainstNull(optionsBuilder, nameof(optionsBuilder));
+            Guard.AgainstNull(options);
 
-            return optionsBuilder.ConfigureFake(fake => A.CallTo(fake)
+            return options.ConfigureFake(fake => A.CallTo(fake)
                                                   .Where(call => !call.Method.IsAbstract)
                                                   .CallsBaseMethod());
         }

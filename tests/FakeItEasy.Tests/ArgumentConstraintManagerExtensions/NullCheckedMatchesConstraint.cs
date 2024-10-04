@@ -1,6 +1,7 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
     using System.Collections.Generic;
+    using FakeItEasy.Tests.TestHelpers;
     using Xunit;
 
     public class NullCheckedMatchesConstraint
@@ -8,14 +9,14 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
     {
         protected override string ExpectedDescription => "is of type string";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
                 null,
                 new object());
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
                 "Foo",
@@ -37,7 +38,7 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
             base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
-        protected override void CreateConstraint(IArgumentConstraintManager<object> scope)
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<object> scope)
         {
             scope.NullCheckedMatches(x => x is string, x => x.Write("is of type string"));
         }

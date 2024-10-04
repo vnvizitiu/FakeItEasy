@@ -1,12 +1,17 @@
 # Creating Fakes
 
-##Natural fakes
+## Natural fakes
 The common way to create a fake object is by using the `A.Fake` syntax, for example:
 
 ```csharp
 var foo = A.Fake<IFoo>();
 ```
 This will return a faked object that is an actual instance of the type specified (`IFoo` in this case).
+
+You can create a fake delegate with the same syntax:
+```csharp
+var func = A.Fake<Func<string, int>>();
+```
 
 You can also create a collection of fakes by writing:
 ```csharp
@@ -22,23 +27,27 @@ object fake = Create.Fake(type);
 IList<object> fakes = Create.CollectionOfFake(type, 10);
 ```
 
-##Explicit Creation Options
-When creating fakes you can, through a fluent interface, specify options for how the fake should be created:
+## Explicit Creation Options
+When creating fakes you can, through a fluent interface, specify options for how the fake should be created, depending on the type of fake being made:
 
-* Specify arguments for the constructor of the faked type.
-* Specify additional interfaces that the fake should implement.
-* Assign additional custom attributes to the faked class.
-* Cause a fake to have [strict mocking semantics](strict-fakes.md).
-* Configure all of a fake's methods to [use their original implementation](calling-base-methods.md).
-* Create a fake that wraps another object.
-  * Specify a recorder for wrapping fakes.
+| Option                                                                                            | Applies to    |
+|---------------------------------------------------------------------------------------------------|---------------|
+| Specify arguments for the constructor of the faked type                                           | non-delegates |
+| Specify additional interfaces that the fake should implement                                      | non-delegates |
+| Assign additional custom attributes to the faked type                                             | non-delegates |
+| Cause a fake to have [strict mocking semantics](strict-fakes.md)                                  | any fake      |
+| Configure all of a fake's methods to [use their original implementation](calling-base-methods.md) | classes       |
+| Create a fake that wraps another object                                                           | any fake      |
+| Create a named fake                                                                               | any fake      |
 
 Examples:
 
 ```csharp
-// Specifying arguments for constructor using expression. This is refactoring friendly!
-// The constructor seen here is never actually invoked. It is an expression and it's purpose
-// is purely to communicate the constructor arguments which will be extracted from it
+// Specifying arguments for constructor using an expression. This is refactoring friendly!
+// Since the constructor call seen here is an expression, it is not invoked. Instead, the
+// constructor arguments will be extracted from the expression and provided to
+// the fake class's constructor. (Of course the fake class, being a subclass of `FooClass`,
+// ultimately invokes `FooClass`'s constructor with these arguments.)
 var foo = A.Fake<FooClass>(x => x.WithArgumentsForConstructor(() => new FooClass("foo", "bar")));
 
 // Specifying arguments for constructor using IEnumerable<object>.
@@ -51,28 +60,29 @@ var foo = A.Fake<FooClass>(x => x.Implements(typeof(IFoo)));
 // or
 var foo = A.Fake<FooClass>(x => x.Implements<IFoo>());
 
-// Assigning custom attributes to the faked class.
-// Get a parameterless constructor for our attribute and create a builder
-var constructor = typeof(FooAttribute).GetConstructor(new Type[0]);
-var builder = new CustomAttributeBuilder(constructor, new object[0]);
-var builders = new List<CustomAttributeBuilder>() { builder };
-// foo and foo's type should both have "FooAttribute"
-var foo = A.Fake<IFoo>(x => x.WithAdditionalAttributes(builders));
+// Assigning custom attributes to the faked type.
+// foo's type should have "FooAttribute"
+var foo = A.Fake<IFoo>(x => x.WithAttributes(() => new FooAttribute()));
 
 // Create wrapper - unconfigured calls will be forwarded to wrapped
 var wrapped = new FooClass("foo", "bar");
 var foo = A.Fake<IFoo>(x => x.Wrapping(wrapped));
+
+// Create a named fake, for easier identification in error messages and using ToString()
+// Note that for a faked delegate, ToString() won't return the name, because only the Invoke
+// method of a delegate can be configured.
+var foo = A.Fake<IFoo>(x => x.Named("Foo #1"));
 ```
 
-##Implicit Creation Options
+## Implicit Creation Options
 
 [Implicit creation options](implicit-creation-options.md) are
 available, equivalent in power to the explicit creation options
 mentioned above.
 
-##Unnatural fakes
+## Unnatural fakes
 
-For those accustomed to [Moq](http://www.moqthis.com/) there is an
+For those accustomed to [Moq](https://github.com/devlooped/moq/) there is an
 alternative way of creating fakes through the `new Fake<T>`
 syntax. The fake provides a fluent interface for configuring the faked
 object:
@@ -84,4 +94,4 @@ fake.CallsTo(x => x.Bar("some argument")).Returns("some return value");
 var foo = fake.FakeObject;
 ```
 
-For an alternative look at migrating from Moq to FakeItEasy, see Daniel Marbach's blog post that talks about [Migration from Moq to FakeItEasy with Resharper Search Patterns](http://www.planetgeek.ch/2013/07/18/migration-from-moq-to-fakeiteasy-with-resharper-search-patterns/).
+For an alternative look at migrating from Moq to FakeItEasy, see Daniel Marbach's blog post that talks about [Migration from Moq to FakeItEasy with Resharper Search Patterns](https://www.planetgeek.ch/2013/07/18/migration-from-moq-to-fakeiteasy-with-resharper-search-patterns/).

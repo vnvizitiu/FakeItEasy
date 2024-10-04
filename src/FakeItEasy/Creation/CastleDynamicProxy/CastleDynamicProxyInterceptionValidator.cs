@@ -1,11 +1,12 @@
 namespace FakeItEasy.Creation.CastleDynamicProxy
 {
     using System;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
     using System.Reflection;
     using FakeItEasy.Core;
 
-    internal class CastleDynamicProxyInterceptionValidator
+    internal class CastleDynamicProxyInterceptionValidator : IMethodInterceptionValidator
     {
         private readonly MethodInfoManager methodInfoManager;
 
@@ -14,75 +15,71 @@ namespace FakeItEasy.Creation.CastleDynamicProxy
             this.methodInfoManager = methodInfoManager;
         }
 
-        public virtual bool MethodCanBeInterceptedOnInstance(MethodInfo method, object callTarget, out string failReason)
+        public bool MethodCanBeInterceptedOnInstance(MethodInfo method, object? callTarget, [NotNullWhen(false)]out string? failReason)
         {
             var invokedMethod = this.GetInvokedMethod(method, callTarget);
 
             failReason = GetReasonForWhyMethodCanNotBeIntercepted(invokedMethod);
-            return failReason == null;
+            return failReason is null;
         }
 
-        private static string GetReasonForWhyMethodCanNotBeIntercepted(MethodInfo method)
+        private static string? GetReasonForWhyMethodCanNotBeIntercepted(MethodInfo method)
         {
-            if (IsDynamicProxyType(method.DeclaringType))
+            if (Castle.DynamicProxy.ProxyUtil.IsProxyType(method.DeclaringType))
             {
                 return null;
             }
 
             if (method.IsFinal)
             {
+#if LACKS_STRING_CONTAINS_COMPARISONTYPE
                 var explicitImplementation = method.Name.Contains('.');
-                if (!explicitImplementation)
+#else
+                var explicitImplementation = method.Name.Contains('.', StringComparison.Ordinal);
+#endif
+                if (explicitImplementation)
                 {
-                    return "Sealed methods can not be intercepted.";
+                    return "The base type implements this interface method explicitly. In order to be able to intercept this method, the fake must specify that it implements this interface in the fake creation options.";
+                }
+                else
+                {
+                    return "Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted.";
                 }
             }
 
             if (method.IsStatic)
             {
-                if (method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false).Any())
+                if (method.GetCustomAttributes(typeof(System.Runtime.CompilerServices.ExtensionAttribute), false).Length == 0)
                 {
-                    return "Extension methods can not be intercepted since they're static.";
+                    return "Static methods can not be intercepted.";
                 }
                 else
                 {
-                    return "Static methods can not be intercepted.";
+                    return "Extension methods can not be intercepted since they're static.";
                 }
             }
 
             if (!method.IsVirtual)
             {
-                return "Non virtual methods can not be intercepted.";
+                return "Non-virtual members can not be intercepted. Only interface members and virtual, overriding, and abstract members can be intercepted.";
             }
 
-            if (!Castle.DynamicProxy.Internal.InternalsUtil.IsAccessible(method))
+            if (!Castle.DynamicProxy.ProxyUtil.IsAccessible(method, out var message))
             {
-                return string.Concat(
-                    "Methods not accessible to ",
-                    Castle.DynamicProxy.ModuleScope.DEFAULT_ASSEMBLY_NAME,
-                    " can not be intercepted.");
+                return message;
             }
 
             return null;
         }
 
-        private static bool IsDynamicProxyType(Type declaringType)
+        private MethodInfo GetInvokedMethod(MethodInfo method, object? callTarget)
         {
-            return declaringType != null &&
-                   declaringType.GetTypeInfo().Assembly.Name() == Castle.DynamicProxy.ModuleScope.DEFAULT_ASSEMBLY_NAME;
-        }
-
-        private MethodInfo GetInvokedMethod(MethodInfo method, object callTarget)
-        {
-            var invokedMethod = method;
-
-            if (callTarget != null)
+            if (callTarget is not null)
             {
-                invokedMethod = this.methodInfoManager.GetMethodOnTypeThatWillBeInvokedByMethodInfo(
-                    callTarget.GetType(), method);
+                return this.methodInfoManager.GetMethodOnTypeThatWillBeInvokedByMethodInfo(callTarget.GetType(), method)!;
             }
 
-            return invokedMethod;
+            return method;
         }
     }
 }

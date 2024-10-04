@@ -3,10 +3,8 @@ namespace FakeItEasy.IntegrationTests
     using System;
     using System.Collections.Generic;
     using System.Diagnostics.CodeAnalysis;
-    using System.Reflection.Emit;
     using FakeItEasy.Configuration;
     using FakeItEasy.Core;
-    using FakeItEasy.Tests;
     using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
@@ -18,6 +16,11 @@ namespace FakeItEasy.IntegrationTests
             IEnumerable<object> Collection { get; }
 
             IFoo Foo { get; }
+        }
+
+        [SuppressMessage("Microsoft.Design", "CA1040:AvoidEmptyInterfaces", Justification = "Required for testing.")]
+        public interface IEmpty
+        {
         }
 
         [Fact]
@@ -51,14 +54,9 @@ namespace FakeItEasy.IntegrationTests
         public void Faked_object_with_additional_attributes_should_create_a_type_with_those_attributes()
         {
             // Arrange
-            var types = new Type[0];
-            var constructor = typeof(ForTestAttribute).GetConstructor(types);
-            var list = new object[0];
-            var attribute = new CustomAttributeBuilder(constructor, list);
-            var builder = new List<CustomAttributeBuilder> { attribute };
 
             // Act
-            var fake = A.Fake<IEmpty>(a => a.WithAdditionalAttributes(builder));
+            var fake = A.Fake<IEmpty>(a => a.WithAttributes(() => new ForTestAttribute()));
 
             // Assert
             fake.GetType().GetCustomAttributes(typeof(ForTestAttribute), true).Should().HaveCount(1);
@@ -68,30 +66,13 @@ namespace FakeItEasy.IntegrationTests
         public void Additional_attributes_should_not_be_added_to_the_next_fake()
         {
             // Arrange
-            var types = new Type[0];
-            var constructor = typeof(ForTestAttribute).GetConstructor(types);
-            var list = new object[0];
-            var attribute = new CustomAttributeBuilder(constructor, list);
-            var builder = new List<CustomAttributeBuilder> { attribute };
-            A.Fake<IEmpty>(a => a.WithAdditionalAttributes(builder));
+            A.Fake<IEmpty>(a => a.WithAttributes(() => new ForTestAttribute()));
 
             // Act
             var secondFake = A.Fake<IFormattable>();
 
             // Assert
             secondFake.GetType().GetCustomAttributes(typeof(ForTestAttribute), true).Should().BeEmpty();
-        }
-
-        [Fact]
-        public void Should_not_be_able_to_fake_a_guid()
-        {
-            // Arrange
-
-            // Act
-            var exception = Record.Exception(() => A.Fake<Guid>());
-
-            // Assert
-            exception.Should().BeAnExceptionOfType<FakeCreationException>();
         }
 
         [Fact]
@@ -104,17 +85,16 @@ namespace FakeItEasy.IntegrationTests
 
             // Assert
             const string ExpectedMessage = @"
-    The following constructors were not tried:
-      (FakeItEasy.Tests.IFoo, *FakeItEasy.IntegrationTests.GeneralTests+NoInstanceType)
-      (*FakeItEasy.IntegrationTests.GeneralTests+NoInstanceType)
+  The constructors with the following signatures were not tried:
+    (FakeItEasy.IntegrationTests.IFoo, *FakeItEasy.IntegrationTests.GeneralTests+NoInstanceType)
+    (*FakeItEasy.IntegrationTests.GeneralTests+NoInstanceType)
 
-      Types marked with * could not be resolved, register them in the current
-      IFakeObjectContainer to enable these constructors.
+    Types marked with * could not be resolved. Please provide a Dummy Factory to enable these constructors.
 
 ";
             exception.Should()
                 .BeAnExceptionOfType<FakeCreationException>().And
-                .Message.Should().Contain(ExpectedMessage);
+                .Message.Should().ContainModuloLineEndings(ExpectedMessage);
         }
 
         [Fact]
@@ -129,7 +109,7 @@ namespace FakeItEasy.IntegrationTests
 
             // Assert
             exception.Should().BeAnExceptionOfType<FakeConfigurationException>().And
-                .Message.Should().Contain("Non virtual");
+                .Message.Should().Contain("Non-virtual");
         }
 
         [Fact]
@@ -144,7 +124,7 @@ namespace FakeItEasy.IntegrationTests
 
             // Assert
             exception.Should().BeAnExceptionOfType<FakeConfigurationException>().And
-                .Message.Should().Contain("Non virtual");
+                .Message.Should().Contain("Non-virtual");
         }
 
         [Fact]
@@ -159,7 +139,7 @@ namespace FakeItEasy.IntegrationTests
 
             // Assert
             exception.Should().BeAnExceptionOfType<FakeConfigurationException>().And
-                .Message.Should().Contain("Non virtual");
+                .Message.Should().Contain("Non-virtual");
         }
 
         [Fact]
@@ -232,7 +212,7 @@ namespace FakeItEasy.IntegrationTests
 
             // Assert
             result.Should().BeAssignableTo<IList<IFoo>>().And
-                .OnlyContain(foo => foo != null && Fake.GetFakeManager(foo) != null);
+                .OnlyContain(foo => foo is object && Fake.GetFakeManager(foo) is object);
         }
 
         [Fact]
@@ -308,10 +288,7 @@ namespace FakeItEasy.IntegrationTests
                 return 1;
             }
 
-            public T GenericNonVirtualFunction<T>()
-            {
-                return default(T);
-            }
+            public T GenericNonVirtualFunction<T>() where T : struct => default;
         }
     }
 }

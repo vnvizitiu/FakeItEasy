@@ -1,0 +1,33 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "*"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        type: boolean
+        default: true
+        description: "Dry run (doesn't actually publish anything)"
+
+jobs:
+
+  build:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-22.04
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - name: Deploy
+      uses: ./tools-shared/.github/actions/deploy
+      with:
+        artifact-name: windows-artifacts
+        nuget-api-key: ${{ secrets.NUGET_API_KEY }}
+        docs-output-prefix: "docs"
+        github-token: ${{ secrets.BOT_GITHUB_TOKEN }}
+        dry-run: ${{ github.event.inputs.dry-run || false }}

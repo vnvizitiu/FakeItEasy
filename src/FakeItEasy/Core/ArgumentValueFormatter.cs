@@ -1,42 +1,56 @@
 namespace FakeItEasy.Core
 {
     using System;
-    using System.Collections.Concurrent;
+    using System.Collections;
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
     using System.Linq;
-#if FEATURE_NETCORE_REFLECTION
-    using System.Reflection;
-#endif
 
     internal class ArgumentValueFormatter
     {
-        private readonly ConcurrentDictionary<Type, IArgumentValueFormatter> cachedFormatters;
         private readonly IEnumerable<IArgumentValueFormatter> typeFormatters;
 
         public ArgumentValueFormatter(IEnumerable<IArgumentValueFormatter> typeFormatters)
         {
-            this.cachedFormatters = new ConcurrentDictionary<Type, IArgumentValueFormatter>();
-
             this.typeFormatters = typeFormatters.Concat(
                 new IArgumentValueFormatter[]
                     {
                         new DefaultStringFormatter(),
+                        new DefaultEnumerableValueFormatter(this),
                         new DefaultFormatter()
                     });
         }
 
-        public virtual string GetArgumentValueAsString(object argumentValue)
+        [SuppressMessage("Microsoft.Design", "CA1031:DoNotCatchGeneralExceptionTypes", Justification = "Any type of exception may be encountered.")]
+        public virtual string GetArgumentValueAsString(object? argumentValue)
         {
-            if (argumentValue == null)
+            if (argumentValue is null)
             {
-                return "<NULL>";
+                return "NULL";
             }
 
             var argumentType = argumentValue.GetType();
 
-            var formatter = this.cachedFormatters.GetOrAdd(argumentType, this.ResolveTypeFormatter);
+            foreach (var formatter in this.GetTypeFormatterCandidates(argumentType))
+            {
+                try
+                {
+                    var formattedValue = formatter.GetArgumentValueAsString(argumentValue);
+                    if (formattedValue is not null)
+                    {
+                        return formattedValue;
+                    }
+                }
+                catch when (formatter.GetType().Assembly != typeof(ArgumentValueFormatter).Assembly)
+                {
+                    // We don't expect internal formatters to throw. If one does, letting the exception bubble up may
+                    // inconvenience the users in the short term, but it's better that we learn about it.
+                }
+            }
 
-            return formatter.GetArgumentValueAsString(argumentValue);
+            // There's a built-in formatter that matches any object, so we're guaranteed not to reach this point.
+            // Return just to satisfy the compiler.
+            return argumentType.ToString();
         }
 
         private static int GetDistanceFromKnownType(Type comparedType, Type knownType)
@@ -46,14 +60,14 @@ namespace FakeItEasy.Core
                 return 0;
             }
 
-            if (comparedType.GetTypeInfo().IsInterface && knownType.GetInterfaces().Contains(comparedType))
+            if (comparedType.IsInterface && knownType.GetInterfaces().Contains(comparedType))
             {
                 return 1;
             }
 
             var distance = 2;
-            var currentType = knownType.GetTypeInfo().BaseType;
-            while (currentType != null)
+            var currentType = knownType.BaseType;
+            while (currentType is not null)
             {
                 if (currentType == comparedType)
                 {
@@ -61,50 +75,17 @@ namespace FakeItEasy.Core
                 }
 
                 distance++;
-                currentType = currentType.GetTypeInfo().BaseType;
+                currentType = currentType.BaseType;
             }
 
             return int.MaxValue;
         }
 
-        private IArgumentValueFormatter ResolveTypeFormatter(Type forType)
-        {
-            return
-                (from formatter in this.typeFormatters
-                 where formatter.ForType.IsAssignableFrom(forType)
-                 select formatter)
-                .Min(f => new RangedFormatter(f, GetDistanceFromKnownType(f.ForType, forType)))
-                .Formatter;
-        }
-
-        /// <summary>
-        /// Holds a formatter as well as the distance between a type to be formatted
-        /// and the type for which the formatted is registered.
-        /// </summary>
-        private class RangedFormatter : IComparable<RangedFormatter>
-        {
-            private readonly int distanceFromKnownType;
-
-            public RangedFormatter(IArgumentValueFormatter formatter, int distanceFromKnownType)
-            {
-                this.Formatter = formatter;
-                this.distanceFromKnownType = distanceFromKnownType;
-            }
-
-            public IArgumentValueFormatter Formatter { get; }
-
-            public int CompareTo(RangedFormatter other)
-            {
-                Guard.AgainstNull(other, nameof(other));
-
-                if (other.distanceFromKnownType == this.distanceFromKnownType)
-                {
-                    return other.Formatter.Priority.CompareTo(this.Formatter.Priority);
-                }
-
-                return this.distanceFromKnownType.CompareTo(other.distanceFromKnownType);
-            }
-        }
+        private IEnumerable<IArgumentValueFormatter> GetTypeFormatterCandidates(Type forType) =>
+            this.typeFormatters
+                .Where(formatter => formatter.ForType.IsAssignableFrom(forType))
+                .OrderBy(formatter => GetDistanceFromKnownType(formatter.ForType, forType))
+                .ThenByDescending(formatter => formatter.Priority);
 
         private class DefaultFormatter
             : ArgumentValueFormatter<object>
@@ -113,9 +94,35 @@ namespace FakeItEasy.Core
 
             protected override string GetStringValue(object argumentValue)
             {
-                Guard.AgainstNull(argumentValue, nameof(argumentValue));
+                Guard.AgainstNull(argumentValue);
 
-                return argumentValue.ToString();
+                return Fake.TryGetFakeManager(argumentValue, out var manager)
+                    ? manager.FakeObjectDisplayName
+                    : argumentValue.ToString() ?? string.Empty;
+            }
+        }
+
+        private class DefaultEnumerableValueFormatter
+            : ArgumentValueFormatter<IEnumerable>
+        {
+            private readonly ArgumentValueFormatter formatter;
+
+            public DefaultEnumerableValueFormatter(ArgumentValueFormatter formatter)
+            {
+                this.formatter = formatter;
+            }
+
+            public override Priority Priority => Priority.Internal;
+
+            protected override string GetStringValue(IEnumerable argumentValue)
+            {
+                Guard.AgainstNull(argumentValue);
+
+                var writer = new StringBuilderOutputWriter(this.formatter);
+                writer.Write("[");
+                writer.WriteArgumentValues(argumentValue);
+                writer.Write("]");
+                return writer.Builder.ToString();
             }
         }
 
@@ -126,7 +133,7 @@ namespace FakeItEasy.Core
 
             protected override string GetStringValue(string argumentValue)
             {
-                Guard.AgainstNull(argumentValue, nameof(argumentValue));
+                Guard.AgainstNull(argumentValue);
 
                 if (argumentValue.Length == 0)
                 {

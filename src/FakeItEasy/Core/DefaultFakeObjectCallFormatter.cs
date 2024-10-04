@@ -1,7 +1,6 @@
 namespace FakeItEasy.Core
 {
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Reflection;
     using System.Text;
@@ -31,20 +30,29 @@ namespace FakeItEasy.Core
         {
             var builder = new StringBuilder();
 
-            builder
-                .Append(this.fakeManagerAccessor.GetFakeManager(call.FakedObject).FakeObjectType)
-                .Append(".");
+            var fakeManager = this.fakeManagerAccessor.GetFakeManager(call.FakedObject);
+
+            AppendObjectType(builder, fakeManager.FakeObjectType);
 
             AppendMethodName(builder, call.Method);
 
             this.AppendArgumentsList(builder, call);
 
+            AppendObjectName(builder, fakeManager.FakeObjectName);
+
             return builder.ToString();
+        }
+
+        private static void AppendObjectType(StringBuilder builder, Type type)
+        {
+            builder
+                .Append(type.ToString())
+                .Append('.');
         }
 
         private static ArgumentValueInfo[] GetArgumentsForArgumentsList(ArgumentValueInfo[] allArguments, MethodInfo method)
         {
-            if (IsPropertySetter(method))
+            if (method.IsPropertySetter())
             {
                 return allArguments.Take(allArguments.Length - 1).ToArray();
             }
@@ -54,55 +62,52 @@ namespace FakeItEasy.Core
 
         private static void AppendArgumentListPrefix(StringBuilder builder, MethodInfo method)
         {
-            if (IsPropertyGetterOrSetter(method))
+            if (method.IsPropertyGetterOrSetter())
             {
-                builder.Append("[");
+                builder.Append('[');
             }
             else
             {
-                builder.Append("(");
+                builder.Append('(');
             }
         }
 
         private static void AppendArgumentListSuffix(StringBuilder builder, MethodInfo method)
         {
-            if (IsPropertyGetterOrSetter(method))
+            if (method.IsPropertyGetterOrSetter())
             {
-                builder.Append("]");
+                builder.Append(']');
             }
             else
             {
-                builder.Append(")");
+                builder.Append(')');
             }
         }
 
         private static void AppendMethodName(StringBuilder builder, MethodInfo method)
         {
-            if (IsPropertyGetterOrSetter(method))
+            if (method.IsPropertyGetterOrSetter())
             {
+#pragma warning disable CA1846 // Prefer 'AsSpan' over 'Substring'
                 builder.Append(method.Name.Substring(4));
+#pragma warning restore CA1846 // Prefer 'AsSpan' over 'Substring'
             }
             else
             {
                 builder.Append(method.Name);
             }
 
-            builder.Append(method.GetGenericArgumentsCSharp());
+            builder.Append(method.GetGenericArgumentsString());
         }
 
-        private static bool IsPropertyGetterOrSetter(MethodInfo method)
+        private static void AppendObjectName(StringBuilder builder, string? objectName)
         {
-            return IsPropertyGetter(method) || IsPropertySetter(method);
-        }
+            if (string.IsNullOrEmpty(objectName))
+            {
+                return;
+            }
 
-        private static bool IsPropertySetter(MethodInfo method)
-        {
-            return method.IsSpecialName && method.Name.StartsWith("set_", StringComparison.Ordinal);
-        }
-
-        private static bool IsPropertyGetter(MethodInfo method)
-        {
-            return method.IsSpecialName && method.Name.StartsWith("get_", StringComparison.Ordinal);
+            builder.Append($" on {objectName}");
         }
 
         private static void AppendArgumentSeparator(StringBuilder builder, int argumentIndex, int totalNumberOfArguments)
@@ -111,7 +116,7 @@ namespace FakeItEasy.Core
             {
                 if (argumentIndex > 0)
                 {
-                    builder.Append(",");
+                    builder.Append(',');
                 }
 
                 builder.AppendLine();
@@ -127,15 +132,14 @@ namespace FakeItEasy.Core
 
         private static ArgumentValueInfo[] GetArgumentValueInfos(IFakeObjectCall call)
         {
-            return
-                (from argument in
-                    call.Method.GetParameters()
-                        .Zip(call.Arguments, (parameter, value) => new { parameter.Name, Value = value })
-                    select new ArgumentValueInfo
-                    {
-                        ArgumentName = argument.Name,
-                        ArgumentValue = argument.Value
-                    }).ToArray();
+            return call.Method.GetParameters()
+                .Zip(call.Arguments, (parameter, value) => new { parameter.Name, Value = value })
+                .Select((argument, index) => new ArgumentValueInfo
+                {
+                    ArgumentIndex = index,
+                    ArgumentName = argument.Name,
+                    ArgumentValue = argument.Value
+                }).ToArray();
         }
 
         private void AppendArgumentsList(StringBuilder builder, IFakeObjectCall call)
@@ -143,7 +147,7 @@ namespace FakeItEasy.Core
             var allArguments = GetArgumentValueInfos(call);
             var argumentsForArgumentList = GetArgumentsForArgumentsList(allArguments, call.Method);
 
-            if (argumentsForArgumentList.Length > 0 || !IsPropertyGetterOrSetter(call.Method))
+            if (argumentsForArgumentList.Length > 0 || !call.Method.IsPropertyGetterOrSetter())
             {
                 AppendArgumentListPrefix(builder, call.Method);
 
@@ -152,7 +156,7 @@ namespace FakeItEasy.Core
                 AppendArgumentListSuffix(builder, call.Method);
             }
 
-            if (IsPropertySetter(call.Method))
+            if (call.Method.IsPropertySetter())
             {
                 builder.Append(" = ");
                 builder.Append(this.argumentValueFormatter.GetArgumentValueAsString(allArguments[allArguments.Length - 1].ArgumentValue));
@@ -161,34 +165,38 @@ namespace FakeItEasy.Core
 
         private void AppendArgumentValue(StringBuilder builder, ArgumentValueInfo argument)
         {
+            // Usually parameters will be named, but in F# (at least) it's possible
+            // to declare a method with anonymous parameters. In that case, we try to
+            // help the user by outputting names like "param1", "param2", …
+            string argumentName = argument.ArgumentName ?? $"param{argument.ArgumentIndex + 1}";
             builder
-                .Append(argument.ArgumentName)
+                .Append(argumentName)
                 .Append(": ")
                 .Append(this.GetArgumentValueAsString(argument.ArgumentValue));
         }
 
-        private string GetArgumentValueAsString(object argumentValue)
+        private string GetArgumentValueAsString(object? argumentValue)
         {
             return this.argumentValueFormatter.GetArgumentValueAsString(argumentValue);
         }
 
-        private void AppendArguments(StringBuilder builder, IEnumerable<ArgumentValueInfo> arguments)
+        private void AppendArguments(StringBuilder builder, ArgumentValueInfo[] arguments)
         {
-            var totalNumberOfArguments = arguments.Count();
-            var callIndex = 0;
+            var totalNumberOfArguments = arguments.Length;
             foreach (var argument in arguments)
             {
-                AppendArgumentSeparator(builder, callIndex, totalNumberOfArguments);
+                AppendArgumentSeparator(builder, argument.ArgumentIndex, totalNumberOfArguments);
                 this.AppendArgumentValue(builder, argument);
-                callIndex++;
             }
         }
 
         private struct ArgumentValueInfo
         {
-            public object ArgumentValue { get; set; }
+            public int ArgumentIndex { get; set; }
 
-            public string ArgumentName { get; set; }
+            public object? ArgumentValue { get; set; }
+
+            public string? ArgumentName { get; set; }
         }
     }
 }

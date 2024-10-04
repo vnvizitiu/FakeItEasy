@@ -1,6 +1,7 @@
 namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
 {
     using System.Collections.Generic;
+    using FakeItEasy.Tests.TestHelpers;
     using Xunit;
 
     public class ComparableGreaterThanTests
@@ -8,7 +9,7 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
     {
         protected override string ExpectedDescription => "greater than 100";
 
-        public static IEnumerable<object[]> InvalidValues()
+        public static IEnumerable<object?[]> InvalidValues()
         {
             return TestCases.FromObject(
                 int.MinValue,
@@ -27,7 +28,7 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
                 100);
         }
 
-        public static IEnumerable<object[]> ValidValues()
+        public static IEnumerable<object?[]> ValidValues()
         {
             return TestCases.FromObject(
                 101,
@@ -50,7 +51,7 @@ namespace FakeItEasy.Tests.ArgumentConstraintManagerExtensions
             base.IsValid_should_return_true_for_valid_values(validValue);
         }
 
-        protected override void CreateConstraint(IArgumentConstraintManager<int> scope)
+        protected override void CreateConstraint(INegatableArgumentConstraintManager<int> scope)
         {
             scope.IsGreaterThan(100);
         }

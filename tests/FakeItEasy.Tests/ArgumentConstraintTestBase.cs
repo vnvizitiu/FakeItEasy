@@ -1,19 +1,21 @@
 namespace FakeItEasy.Tests
 {
-    using System.Reflection;
-    using System.Text;
+    using System;
     using FakeItEasy.Core;
-    using FakeItEasy.Tests.TestHelpers;
     using FluentAssertions;
     using Xunit;
 
     public abstract class ArgumentConstraintTestBase
     {
-        internal IArgumentConstraint ConstraintField { get; set; }
+        private IArgumentConstraint? constraint;
+
+        internal IArgumentConstraint Constraint
+        {
+            get => this.constraint ?? throw new InvalidOperationException($"{nameof(this.Constraint)} isn't set");
+            set => this.constraint = value;
+        }
 
         protected abstract string ExpectedDescription { get; }
-
-        private IArgumentConstraint Constraint => this.ConstraintField;
 
         public virtual void IsValid_should_return_false_for_invalid_values(object invalidValue)
         {
@@ -30,11 +32,11 @@ namespace FakeItEasy.Tests
         [Fact]
         public virtual void Constraint_should_provide_correct_description()
         {
-            var output = new StringBuilder();
+            var writer = ServiceLocator.Resolve<StringBuilderOutputWriter.Factory>().Invoke();
 
-            this.Constraint.WriteDescription(new StringBuilderOutputWriter(output));
+            this.Constraint.WriteDescription(writer);
 
-            output.ToString().Should().Be("<" + this.ExpectedDescription + ">");
+            writer.Builder.ToString().Should().Be("<" + this.ExpectedDescription + ">");
         }
     }
 }
